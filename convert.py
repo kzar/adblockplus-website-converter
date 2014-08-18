@@ -121,13 +121,19 @@ def process_body(nodes, strings, counter=1):
         links = "(%s)" % ", ".join(nodes["en"].links)
       else:
         links = ""
+      # If an identical string has been stored on this page reuse it
+      try:
+        index = strings["en"].values().index({"message": nodes["en"].nodeValue.strip()})
+      except ValueError:
+        index = -1
       for locale, value in nodes.iteritems():
         text = value.nodeValue or ""
         pre, text, post = re.search(r"^(\s*)(.*?)(\s*)$", text, re.S).groups()
-        if text and text.find("[untr]") < 0:
+        if index == -1 and text and text.find("[untr]") < 0:
           strings[locale]["s%i" % counter] = {"message": text}
-        value.nodeValue = "%s$s%i%s$%s" % (pre, counter, links, post)
-      counter += 1
+        value.nodeValue = "%s$s%i%s$%s" % (pre, (index > -1 and index or counter), links, post)
+      if index == -1:
+        counter += 1
   else:
     print >>sys.stderr, "Unexpected node type %i" % nodes["en"].nodeType
 
