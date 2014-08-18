@@ -24,10 +24,6 @@ def read_xml(path):
     xml = xml.replace(' href="en/', ' href="')
     xml = xml.replace(' href="en"', ' href="index"')
     xml = xml.replace(' src="en/', ' src="')
-
-    # <foo><attr name="bar">test</attr> => <foo bar="test">
-    xml = re.sub(r'>\s*<attr\s+name="(\w+)">([^"<>]*)</attr\b', r' \1="\2"', xml, flags=re.S)
-
     return minidom.parseString("<!DOCTYPE root [<!ENTITY mdash \"&#8212;\"><!ENTITY nbsp \"&#xA0;\">]><root>%s</root>" % xml)
 
 def save_locale(path, data):
@@ -199,6 +195,9 @@ def process_page(path, menu):
 
   pagedata = pagedata.replace("/_override-static/global/global", "")
   pagedata = re.sub(r"</?fix/?>", "", pagedata, flags=re.S)
+
+  # <foo><attr name="bar">test</attr> => <foo bar="test">
+  pagedata = re.sub(r'>\s*<attr\s+name="(\w+)">([^"<>]*)</attr\b', r' \1="\2"', pagedata, flags=re.S)
 
   # <script src=""/> => <script src=""></script>
   pagedata = re.sub(r'<((?!link\b|meta\b|br\b|col\b|base\b|img\b|param\b|area\b|hr\b|input\b)([\w:]+)\b[^<>]*)/>', r'<\1></\2>', pagedata, flags=re.S)
