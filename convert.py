@@ -19,6 +19,7 @@ def ensure_dir(path):
 def read_xml(path):
   with open(path, "rb") as handle:
     xml = handle.read()
+    xml = xml.replace('&copy;', '(C)')
     xml = re.sub(r"(?<!&)&(?!#?\w+;|&)", "&amp;", xml)
     xml = xml.replace(' href="en/', ' href="')
     xml = xml.replace(' href="en"', ' href="index"')
@@ -200,6 +201,8 @@ def process_page(path, menu):
 
   # <img src="foo">dummy</img> => <img src="foo">
   pagedata = re.sub(r'<((link|meta|br|col|base|img|param|area|hr|input)\b[^<>]*)>([^<>]*)</\2>', r'<\1>', pagedata, flags=re.S)
+
+  pagedata = pagedata.replace("(C)", "&copy;")
 
   if pagename == "index":
     def translate_tag(match):
