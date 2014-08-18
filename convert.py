@@ -297,6 +297,8 @@ def process_menu():
           string = "_bugs"
         elif url.startswith("/"):
           string = url.strip("/").split("/")[-1]
+        elif url == "https://issues.adblockplus.org/report/13":
+          string = "roadmap"
         else:
           string = url
         if text and text.find("[untr]") < 0:
