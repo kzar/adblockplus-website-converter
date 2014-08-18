@@ -6,6 +6,7 @@ from collections import OrderedDict
 from xml.dom import minidom, Node
 
 output_dir = "../wwwnew"
+input_dir = "../www"
 locales = ("ar", "bg", "de", "en", "es", "fr", "he", "hu", "ko", "lt", "nl", "pt_BR", "ru", "sk", "zh_CN", "zh_TW")
 
 def ensure_dir(path):
@@ -299,6 +300,7 @@ def process_menu():
           menu[locale][string] = {"message": text}
   return menu
 
+os.chdir(input_dir)
 menu = process_menu()
 process("page!en", menu)
 process("en", menu)
