@@ -61,10 +61,17 @@ def merge_children(nodes):
       return True
     if (node.nodeType == Node.ELEMENT_NODE and
         node.tagName == "a" and
-        len(node.attributes) == 1 and
         node.hasAttribute("href") and
         len(node.childNodes) == 1 and
         node.firstChild.nodeType == Node.TEXT_NODE):
+      return True
+    if (node.nodeType == Node.ELEMENT_NODE and
+        node.tagName == "a" and
+        not node.hasAttribute("href") and
+        len(node.childNodes) > 1 and
+        node.childNodes[0].nodeType == Node.ELEMENT_NODE and
+        node.childNodes[0].tagName == "attr" and
+        node.childNodes[-1].nodeType == Node.TEXT_NODE):
       return True
     return False
 
@@ -91,6 +98,11 @@ def merge_children(nodes):
             links = []
             for child in parent.childNodes[start:end+1]:
               if child.nodeType == Node.ELEMENT_NODE and child.tagName == "a":
+                # Squash attr tags into a tags now so link strings are generated properly
+                for grandchild in child.childNodes:
+                  if grandchild.nodeType == Node.ELEMENT_NODE and grandchild.tagName == "attr":
+                    child.setAttribute(grandchild.getAttribute("name"), get_text(grandchild))
+                    child.removeChild(grandchild)
                 links.append(child.getAttribute("href"))
                 child.removeAttribute("href")
               text.append(child.toxml())
