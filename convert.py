@@ -19,12 +19,11 @@ def ensure_dir(path):
 def read_xml(path):
   with open(path, "rb") as handle:
     xml = handle.read()
-    xml = xml.replace('&copy;', '(C)')
     xml = re.sub(r"(?<!&)&(?!#?\w+;|&)", "&amp;", xml)
     xml = xml.replace(' href="en/', ' href="')
     xml = xml.replace(' href="en"', ' href="index"')
     xml = xml.replace(' src="en/', ' src="')
-    return minidom.parseString("<!DOCTYPE root [<!ENTITY mdash \"&#8212;\"><!ENTITY nbsp \"&#xA0;\">]><root>%s</root>" % xml)
+    return minidom.parseString("<!DOCTYPE root [<!ENTITY mdash \"&#8212;\"><!ENTITY nbsp \"&#xA0;\"><!ENTITY copy \"&#169;\">]><root>%s</root>" % xml)
 
 def save_locale(path, data):
   ensure_dir(path)
@@ -220,7 +219,8 @@ def process_page(path, menu):
   # <img src="foo">dummy</img> => <img src="foo">
   pagedata = re.sub(r'<((link|meta|br|col|base|img|param|area|hr|input)\b[^<>]*)>([^<>]*)</\2>', r'<\1>', pagedata, flags=re.S)
 
-  pagedata = pagedata.replace("(C)", "&copy;")
+  # Remove some trailing whitespace
+  pagedata = re.sub(r'\s+$', '', pagedata, 0, flags=re.M)
 
   if pagename == "index":
     def translate_tag(match):
