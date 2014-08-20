@@ -4,6 +4,8 @@
 import sys, os, re, json, errno, codecs, itertools
 from collections import OrderedDict
 from xml.dom import minidom, Node
+import HTMLParser
+h = HTMLParser.HTMLParser()
 
 output_dir = "../wwwnew"
 input_dir = "../www"
@@ -144,7 +146,7 @@ def process_body(nodes, strings, counter=1):
         pre, text, post = re.search(r"^(\s*)(.*?)(\s*)$", text, re.S).groups()
         if string_key == "s%i" % counter and text and text.find("[untr]") < 0:
           text = re.sub("\n\s+", " ", text, flags=re.S)
-          strings[locale][string_key] = {"message": text}
+          strings[locale][string_key] = {"message": h.unescape(text)}
         value.nodeValue = "%s$%s%s$%s" % (pre, string_key, links, post)
       counter += 1
   else:
