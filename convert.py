@@ -60,6 +60,7 @@ def merge_children(nodes):
       return True
     if (node.nodeType == Node.ELEMENT_NODE and
         node.tagName == "a" and
+        len(node.attributes) == 1 and
         node.hasAttribute("href") and
         len(node.childNodes) == 1 and
         node.firstChild.nodeType == Node.TEXT_NODE):
