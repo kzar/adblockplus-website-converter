@@ -143,6 +143,7 @@ def process_body(nodes, strings, counter=1):
         text = value.nodeValue or ""
         pre, text, post = re.search(r"^(\s*)(.*?)(\s*)$", text, re.S).groups()
         if string_key == "s%i" % counter and text and text.find("[untr]") < 0:
+          text = re.sub("\n\s+", " ", text, flags=re.S)
           strings[locale][string_key] = {"message": text}
         value.nodeValue = "%s$%s%s$%s" % (pre, string_key, links, post)
       counter += 1
@@ -219,8 +220,9 @@ def process_page(path, menu):
   # <img src="foo">dummy</img> => <img src="foo">
   pagedata = re.sub(r'<((link|meta|br|col|base|img|param|area|hr|input)\b[^<>]*)>([^<>]*)</\2>', r'<\1>', pagedata, flags=re.S)
 
-  # Remove some trailing whitespace
+  # Remove some trailing whitespace and replace tabs with spaces
   pagedata = re.sub(r'\s+$', '', pagedata, 0, flags=re.M)
+  pagedata = re.sub(r'\t', '  ', pagedata)
 
   if pagename == "index":
     def translate_tag(match):
