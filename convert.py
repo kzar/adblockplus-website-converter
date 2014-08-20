@@ -68,10 +68,10 @@ def merge_children(nodes):
     if (node.nodeType == Node.ELEMENT_NODE and
         node.tagName == "a" and
         not node.hasAttribute("href") and
-        len(node.childNodes) > 1 and
-        node.childNodes[0].nodeType == Node.ELEMENT_NODE and
-        node.childNodes[0].tagName == "attr" and
-        node.childNodes[-1].nodeType == Node.TEXT_NODE):
+        len(node.childNodes) == 2 and
+        node.firstChild.nodeType == Node.ELEMENT_NODE and
+        node.firstChild.tagName == "attr" and
+        node.lastChild.nodeType == Node.TEXT_NODE):
       return True
     return False
 
