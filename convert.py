@@ -220,9 +220,16 @@ def process_page(path, menu):
   # <img src="foo">dummy</img> => <img src="foo">
   pagedata = re.sub(r'<((link|meta|br|col|base|img|param|area|hr|input)\b[^<>]*)>([^<>]*)</\2>', r'<\1>', pagedata, flags=re.S)
 
+  def translate_tabs(tabstop = 8):
+    offset = 0
+    def replace(match, offset=offset):
+      offset += match.start(0)
+      return " " * (tabstop - offset % tabstop)
+    return replace
+
   # Remove some trailing whitespace and replace tabs with spaces
-  pagedata = re.sub(r'\s+$', '', pagedata, 0, flags=re.M)
-  pagedata = re.sub(r'\t', '  ', pagedata)
+  pagedata = "\n".join([re.sub(r'\t', translate_tabs(8), s) for s in pagedata.split("\n")])
+  pagedata = re.sub(r'\ +\n', '\n', pagedata, flags=re.S)
 
   if pagename == "index":
     def translate_tag(match):
