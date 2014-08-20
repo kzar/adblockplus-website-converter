@@ -135,17 +135,16 @@ def process_body(nodes, strings, counter=1):
         links = ""
       # If an identical string has been stored on this page reuse it
       try:
-        index = strings["en"].values().index({"message": nodes["en"].nodeValue.strip()})
+        string_key = strings["en"].keys()[strings["en"].values().index({"message": nodes["en"].nodeValue.strip()})]
       except ValueError:
-        index = -1
+        string_key = "s%i" % counter
       for locale, value in nodes.iteritems():
         text = value.nodeValue or ""
         pre, text, post = re.search(r"^(\s*)(.*?)(\s*)$", text, re.S).groups()
-        if index == -1 and text and text.find("[untr]") < 0:
-          strings[locale]["s%i" % counter] = {"message": text}
-        value.nodeValue = "%s$s%i%s$%s" % (pre, (index > -1 and index or counter), links, post)
-      if index == -1:
-        counter += 1
+        if string_key == "s%i" % counter and text and text.find("[untr]") < 0:
+          strings[locale][string_key] = {"message": text}
+        value.nodeValue = "%s$%s%s$%s" % (pre, string_key, links, post)
+      counter += 1
   else:
     print >>sys.stderr, "Unexpected node type %i" % nodes["en"].nodeType
 
