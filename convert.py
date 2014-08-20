@@ -230,7 +230,7 @@ def process_page(path, menu):
 
     pagedata = re.sub(r"\$([\w\-]+)\$", r'{{"\1"|translate}}', pagedata)
     pagedata = re.sub(r"\$([\w\-]+)\((.*?)\)\$", lambda match: translate_tag(match), pagedata)
-    pagedata = "noheading=True\n\n%s" % pagedata
+    pagedata = "noheading=True\nlocalefile=index\n\n%s" % pagedata
   elif titlestring != "title":
     pagedata = "title=%s\n\n%s" % (titlestring, pagedata)
 
