@@ -206,7 +206,7 @@ def process_page(path, menu):
   body = re.sub(r"</?anwv/?>", "", bodies["en"].toxml())
   head = re.sub(r"</?anwv/?>", "", get_element(data["en"].documentElement, "head", "anwv").toxml())
   if head:
-    pagedata = "<head>%s</head>%s" % (head, body)
+    pagedata = "<head>%s</head>%s" % (h.unescape(head), body)
   else:
     pagedata = body
 
@@ -242,7 +242,10 @@ def process_page(path, menu):
     pagedata = re.sub(r"\$([\w\-]+)\$", r'{{"\1"|translate}}', pagedata)
     pagedata = re.sub(r"\$([\w\-]+)\((.*?)\)\$", lambda match: translate_tag(match), pagedata)
     pagedata = "noheading=True\nlocalefile=index\n\n%s" % pagedata
-  elif titlestring != "title":
+  elif pagename == "acceptable-ads-manifesto":
+    pagedata = "template=minimal\n\n%s" % pagedata
+
+  if pagename != "index" and titlestring != "title":
     pagedata = "title=%s\n\n%s" % (titlestring, pagedata)
 
   if pagename == "index":
@@ -261,6 +264,8 @@ def process_page(path, menu):
 def process_image(path):
   if path.startswith("en/"):
     target = os.path.join(output_dir, "locales", os.path.dirname(path), os.path.basename(path).replace("image!", ""))
+  elif path.startswith("images/manifesto/") and not "background" in path:
+    target = os.path.join(output_dir, "locales", "en", os.path.dirname(path), os.path.basename(path).replace("image!", ""))
   else:
     target = os.path.join(output_dir, "static", os.path.dirname(path), os.path.basename(path).replace("image!", ""))
   with open(path, "rb") as handle:
