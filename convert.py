@@ -149,6 +149,8 @@ def process_body(nodes, strings, counter=1):
           strings[locale][string_key] = {"message": h.unescape(text)}
         value.nodeValue = "%s$%s%s$%s" % (pre, string_key, links, post)
       counter += 1
+  elif nodes["en"].nodeType == Node.COMMENT_NODE:
+    pass
   else:
     print >>sys.stderr, "Unexpected node type %i" % nodes["en"].nodeType
 
