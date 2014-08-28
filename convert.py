@@ -352,6 +352,66 @@ def process_interface(path):
       localefile = os.path.join(output_dir, "locales", locale, pagename + ".json")
       save_locale(localefile, value)
 
+def process_preftable(path):
+  pagename = os.path.join(os.path.dirname(path), os.path.basename(path).replace("preftable!", ""))
+  format = "%s/" + path.split("/", 1)[1]
+  pagename = pagename.split("/", 1)[1]
+
+  data = {}
+  strings = {}
+  descriptions = {}
+  tables = {}
+
+  for locale in locales:
+    if not os.path.exists(format % locale):
+      continue
+    data[locale] = read_xml(format % locale)
+    strings[locale] = OrderedDict()
+    tables[locale] = []
+
+  for locale, value in data.iteritems():
+    title = get_text(get_element(data[locale].documentElement, "title", "anwv")).strip()
+    if title and title.find("[untr]") < 0:
+      strings[locale]["title"] = {"message": title}
+
+    descriptions[locale] = get_element(value.documentElement, "description", "anwv")
+
+    tables[locale].append([
+      get_text(get_element(value.documentElement, "prefnamecol", "anwv")).strip(),
+      get_text(get_element(value.documentElement, "defaultcol", "anwv")).strip(),
+      get_text(get_element(value.documentElement, "descriptioncol", "anwv")).strip()
+    ])
+    for section in get_element(value.documentElement, "sections").childNodes:
+      tables[locale].append([get_text(get_element(section, "title", "anwv")).strip()])
+      for preference in get_element(section, "preferences").childNodes:
+        tables[locale].append([
+          get_text(get_element(preference, "name", "anwv")).strip(),
+          get_text(get_element(preference, "default", "anwv")).strip(),
+          re.sub(r"</?anwv/?>", "", get_element(preference, "description", "anwv").toxml()).strip()
+        ])
+
+  process_body(descriptions, strings)
+
+  #print tables["en"]
+  # FIXME use this parsed tables to generate something for the template!
+  # - Create a template
+  # - Only store translation if doesn't contain [untr]
+  # - Store ID and stuff too?
+  # - Put this table data into strings like I've done for interfaces
+
+  pagedata = descriptions["en"].toxml()
+
+  # Save the page's HTML
+  target = os.path.join(output_dir, "pages", pagename + ".raw")
+  ensure_dir(target)
+  with codecs.open(target, "wb", encoding="utf-8") as handle:
+    handle.write(pagedata)
+  # Save all the translations of strings for the page
+  for locale, value in strings.iteritems():
+    if value:
+      localefile = os.path.join(output_dir, "locales", locale, pagename + ".json")
+      save_locale(localefile, value)
+
 
 def process_file(path, menu):
   if os.path.basename(path) in ("page!footer", "page!internet-explorer", "page!contribute-old"):
@@ -363,6 +423,8 @@ def process_file(path, menu):
     process_image(path)
   elif os.path.basename(path).startswith("interface!"):
     process_interface(path)
+  elif os.path.basename(path).startswith("preftable!"):
+    process_preftable(path)
   else:
     print >>sys.stderr, "Ignoring file %s" % path
 
