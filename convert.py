@@ -122,7 +122,7 @@ def merge_children(nodes):
 
 def process_body(nodes, strings, counter=1):
   if nodes["en"].nodeType == Node.ELEMENT_NODE:
-    if nodes["en"].tagName not in ("style", "script", "fix"):
+    if nodes["en"].tagName not in ("style", "script", "fix", "pre"):
       merge_children(nodes)
       for i in range(len(nodes["en"].childNodes)):
         new_nodes = {}
@@ -334,6 +334,9 @@ def process_interface(path):
 
   # Translate the strings in the description
   process_body(descriptions, strings)
+
+  strings["en"]["general_notes"] = { "message": "General notes"}
+  strings["en"]["methods_and_properties"] = {"message": "Methods and properties"}
 
   pagedata = re.sub(r"</?anwv/?>", "", descriptions["en"].toxml())
   pagedata = "template=interface\n\n%s" % pagedata
