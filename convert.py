@@ -282,20 +282,23 @@ def process_interface(path):
 
   data = {}
   strings = {}
+  descriptions = {}
+
   for locale in locales:
     if not os.path.exists(format % locale):
       continue
     data[locale] = read_xml(format % locale)
     strings[locale] = OrderedDict()
 
+  for locale, value in data.iteritems():
     title = get_text(get_element(data[locale].documentElement, "title", "anwv")).strip()
     if title and title.find("[untr]") < 0:
       strings[locale]["title"] = {"message": title}
 
-  bodies = {}
-  for locale, value in data.iteritems():
-    bodies[locale] = get_element(value.documentElement, "description", "anwv")
+    # Store the description blocks
+    descriptions[locale] = get_element(value.documentElement, "description", "anwv")
 
+    # Store the interface properties
     property_counter = 0
     for property in get_element(value.documentElement, "properties").childNodes:
       for p in property.childNodes:
@@ -304,37 +307,43 @@ def process_interface(path):
             "message": re.sub(r"</?anwv/?>", "", p.firstChild.toxml()).strip()
           }
       property_counter += 1
+
+    # Store the interface methods
     method_counter = 0
     for method in get_element(value.documentElement, "methods").childNodes:
       for p in method.childNodes:
         if p.nodeType == Node.ELEMENT_NODE:
-          if p.firstChild:
-            value = re.sub(r"</?anwv/?>", "", p.firstChild.toxml()).strip()
+          if p.tagName == "arguments":
+            argument_counter = 0
+            for argument in p.childNodes:
+              for argument_property in argument.childNodes:
+                if argument_property.nodeType == Node.ELEMENT_NODE:
+                  value = re.sub(r"</?anwv/?>", "", argument_property.firstChild.toxml()).strip()
+                  if value and value.find("[untr]") < 0:
+                    strings[locale]["method" + str(method_counter) +
+                                    "argument" + str(argument_counter) +
+                                    argument_property.tagName] = { "message": value }
+              argument_counter += 1
           else:
-            value = ""
-          strings[locale]["method" + str(method_counter) + p.tagName] = {
-            "message": value
-          }
+            value = re.sub(r"</?anwv/?>", "", p.firstChild.toxml()).strip()
+            if value and value.find("[untr]") < 0:
+              strings[locale]["method" + str(method_counter) + p.tagName] = {
+                "message": value
+              }
       method_counter += 1
 
-  process_body(bodies, strings)
+  # Translate the strings in the description
+  process_body(descriptions, strings)
 
+  pagedata = re.sub(r"</?anwv/?>", "", descriptions["en"].toxml())
+  pagedata = "template=interface\n\n%s" % pagedata
+
+  # Save the page's HTML
   target = os.path.join(output_dir, "pages", pagename + ".raw")
   ensure_dir(target)
-
-  # FIXME - Avoid requiring method_count and property_count, fix method arguments
-
-  pagedata = re.sub(r"</?anwv/?>", "", bodies["en"].toxml())
-  pagedata = "template=interface\nproperty_count=%d\nmethod_count=%d\n\n%s" % (
-    property_counter,
-    method_counter,
-    pagedata
-  )
-
-
   with codecs.open(target, "wb", encoding="utf-8") as handle:
     handle.write(pagedata)
-
+  # Save all the translations of strings for the page
   for locale, value in strings.iteritems():
     if value:
       localefile = os.path.join(output_dir, "locales", locale, pagename + ".json")
