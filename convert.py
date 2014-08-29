@@ -376,30 +376,43 @@ def process_preftable(path):
 
     descriptions[locale] = get_element(value.documentElement, "description", "anwv")
 
-    tables[locale].append([
-      get_text(get_element(value.documentElement, "prefnamecol", "anwv")).strip(),
-      get_text(get_element(value.documentElement, "defaultcol", "anwv")).strip(),
-      get_text(get_element(value.documentElement, "descriptioncol", "anwv")).strip()
-    ])
+
+    # Table headers
+    prefnamecol = get_text(get_element(value.documentElement, "prefnamecol", "anwv")).strip()
+    if prefnamecol and prefnamecol.find("[untr]") < 0:
+      strings[locale]["prefnamecol"] = { "message": prefnamecol }
+    defaultcol = get_text(get_element(value.documentElement, "defaultcol", "anwv")).strip()
+    if defaultcol and prefnamecol.find("[untr]") < 0:
+      strings[locale]["defaultcol"] = { "message": defaultcol }
+    descriptioncol = get_text(get_element(value.documentElement, "descriptioncol", "anwv")).strip()
+    if descriptioncol and descriptioncol.find("[untr]") < 0:
+      strings[locale]["descriptioncol"] = { "message": descriptioncol }
+    # Table sections
+    section_counter = 0
     for section in get_element(value.documentElement, "sections").childNodes:
-      tables[locale].append([get_text(get_element(section, "title", "anwv")).strip()])
-      for preference in get_element(section, "preferences").childNodes:
-        tables[locale].append([
-          get_text(get_element(preference, "name", "anwv")).strip(),
-          get_text(get_element(preference, "default", "anwv")).strip(),
-          re.sub(r"</?anwv/?>", "", get_element(preference, "description", "anwv").toxml()).strip()
-        ])
+      sectionid = get_text(get_element(section, "id", "anwv")).strip()
+      if sectionid and sectionid.find("[untr]") < 0:
+        strings[locale]["section" + str(section_counter) + "id"] = { "message": sectionid }
+      sectiontitle = get_text(get_element(section, "title", "anwv")).strip()
+      if sectiontitle and sectiontitle.find("[untr]") < 0:
+        strings[locale]["section" + str(section_counter) + "title"] = { "message": sectiontitle }
+      section_preference_counter = 0
+      for section_preference in get_element(section, "preferences").childNodes:
+        for section_preference_property in section_preference.childNodes:
+          if section_preference_property.nodeType == Node.ELEMENT_NODE:
+            value = re.sub(r"</?anwv/?>", "", section_preference_property.firstChild.toxml()).strip()
+            value = re.sub(r'>\s*<attr\s+name="(\w+)">([^"<>]*)</attr\b', r' \1="\2"', value, flags=re.S)
+            if value and value.find("[untr]") < 0:
+              strings[locale]["section" + str(section_counter) + "preference" + str(section_preference_counter) + section_preference_property.tagName] = {
+                "message": value
+              }
+        section_preference_counter += 1
+      section_counter += 1
 
   process_body(descriptions, strings)
 
-  #print tables["en"]
-  # FIXME use this parsed tables to generate something for the template!
-  # - Create a template
-  # - Only store translation if doesn't contain [untr]
-  # - Store ID and stuff too?
-  # - Put this table data into strings like I've done for interfaces
-
   pagedata = descriptions["en"].toxml()
+  pagedata = "template=preftable\n\n%s" % pagedata
 
   # Save the page's HTML
   target = os.path.join(output_dir, "pages", pagename + ".raw")
