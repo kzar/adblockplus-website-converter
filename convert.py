@@ -290,6 +290,48 @@ def process_interface(path):
     data[locale] = read_xml(format % locale)
     strings[locale] = OrderedDict()
 
+  # Store the methods and properties for the interface
+  interface = {
+    "properties": {},
+    "methods": {}
+  }
+  for property in get_element(data["en"].documentElement, "properties").childNodes:
+    property_name = get_text(get_element(property, "name", "anwv")).strip()
+    property_type = get_text(get_element(property, "type", "anwv")).strip()
+    property_modifier = get_text(get_element(property, "modifier", "anwv")).strip()
+    property_description = "$%sDescription$" % property_name
+    interface["properties"][property_name] = {
+      "name": property_name,
+      "type": property_type,
+      "modifier": property_modifier,
+      "description": property_description
+    }
+  for method in get_element(data["en"].documentElement, "methods").childNodes:
+    method_name = get_text(get_element(method, "name", "anwv")).strip()
+    method_return_type = get_text(get_element(method, "return_type", "anwv")).strip()
+    method_return_description = "$%sReturnDescription$" % method_name
+    method_description = "$%sDescription$" % method_name
+    method_version = get_text(get_element(method, "version", "anwv")).strip()
+    method_arguments = []
+    for argument in get_element(method, "arguments").childNodes:
+      argument_name = get_text(get_element(argument, "name", "anwv")).strip()
+      argument_type = get_text(get_element(argument, "type", "anwv")).strip()
+      argument_description = "$%sArgument%sDescription$" % (method_name, argument_name)
+
+      method_arguments.append({
+        "name": argument_name,
+        "type": argument_type,
+        "description": argument_description
+      })
+    interface["methods"][method_name] = {
+      "name": method_name,
+      "return_type": method_return_type,
+      "return_description": method_return_description,
+      "description": method_description,
+      "version": method_version,
+      "arguments": method_arguments
+    }
+
   for locale, value in data.iteritems():
     title = get_text(get_element(data[locale].documentElement, "title", "anwv")).strip()
     if title and title.find("[untr]") < 0:
@@ -298,39 +340,27 @@ def process_interface(path):
     # Store the description blocks
     descriptions[locale] = get_element(value.documentElement, "description", "anwv")
 
-    # Store the interface properties
-    property_counter = 0
+    # Find all the translations for property, method and method argument descriptions
     for property in get_element(value.documentElement, "properties").childNodes:
-      for p in property.childNodes:
-        if p.nodeType == Node.ELEMENT_NODE:
-          strings[locale]["property" + str(property_counter) + p.tagName] = {
-            "message": re.sub(r"</?anwv/?>", "", p.firstChild.toxml()).strip()
-          }
-      property_counter += 1
-
-    # Store the interface methods
-    method_counter = 0
+      property_name = get_text(get_element(property, "name", "anwv")).strip()
+      property_description = re.sub(r"</?anwv/?>", "", get_text(get_element(property, "name", "anwv"))).strip()
+      if property_description and property_description.find("[untr]") < 0:
+        strings[locale][property_name + "Description"] = { "message": property_description }
     for method in get_element(value.documentElement, "methods").childNodes:
-      for p in method.childNodes:
-        if p.nodeType == Node.ELEMENT_NODE:
-          if p.tagName == "arguments":
-            argument_counter = 0
-            for argument in p.childNodes:
-              for argument_property in argument.childNodes:
-                if argument_property.nodeType == Node.ELEMENT_NODE:
-                  value = re.sub(r"</?anwv/?>", "", argument_property.firstChild.toxml()).strip()
-                  if value and value.find("[untr]") < 0:
-                    strings[locale]["method" + str(method_counter) +
-                                    "argument" + str(argument_counter) +
-                                    argument_property.tagName] = { "message": value }
-              argument_counter += 1
-          else:
-            value = re.sub(r"</?anwv/?>", "", p.firstChild.toxml()).strip()
-            if value and value.find("[untr]") < 0:
-              strings[locale]["method" + str(method_counter) + p.tagName] = {
-                "message": value
-              }
-      method_counter += 1
+      method_name = get_text(get_element(method, "name", "anwv")).strip()
+      method_description = re.sub(r"</?anwv/?>", "", get_element(method, "description", "anwv").firstChild.toxml()).strip()
+      method_return_description = get_element(method, "return_description", "anwv").firstChild
+      if method_description and method_description.find("[untr]") < 0:
+        strings[locale][method_name + "Description"] = { "message": method_description }
+      if method_return_description:
+        method_return_description = re.sub(r"</?anwv/?>", "", method_return_description.toxml()).strip()
+        if method_return_description.find("[untr]") < 0:
+          strings[locale][method_name + "ReturnDescription"] = { "message": method_return_description }
+      for argument in get_element(method, "arguments").childNodes:
+        argument_name = get_text(get_element(argument, "name", "anwv")).strip()
+        argument_description = re.sub(r"</?anwv/?>", "", get_element(argument, "description", "anwv").firstChild.toxml()).strip()
+        if argument_description and argument_description.find("[untr]") < 0:
+          strings[locale][method_name + "Argument" + argument_name + "Description"] = { "message": argument_description }
 
   # Translate the strings in the description
   process_body(descriptions, strings)
@@ -339,10 +369,10 @@ def process_interface(path):
   strings["en"]["methods_and_properties"] = {"message": "Methods and properties"}
 
   pagedata = re.sub(r"</?anwv/?>", "", descriptions["en"].toxml())
-  pagedata = "template=interface\n\n%s" % pagedata
+  pagedata = "%s\n\n{%% set interface=%s %%}\n{%% include \"includes/interface\" %%}" % (pagedata, json.dumps(interface, indent=2, separators=(',', ': ')))
 
   # Save the page's HTML
-  target = os.path.join(output_dir, "pages", pagename + ".raw")
+  target = os.path.join(output_dir, "pages", pagename + ".tmpl")
   ensure_dir(target)
   with codecs.open(target, "wb", encoding="utf-8") as handle:
     handle.write(pagedata)
