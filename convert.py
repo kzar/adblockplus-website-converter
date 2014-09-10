@@ -291,45 +291,36 @@ def process_interface(path):
     strings[locale] = OrderedDict()
 
   # Store the methods and properties for the interface
-  interface = {
-    "properties": {},
-    "methods": {}
-  }
+  interface = {}
+
   for property in get_element(data["en"].documentElement, "properties").childNodes:
     property_name = get_text(get_element(property, "name", "anwv")).strip()
     property_type = get_text(get_element(property, "type", "anwv")).strip()
     property_modifier = get_text(get_element(property, "modifier", "anwv")).strip()
     property_description = "$%sDescription$" % property_name
-    interface["properties"][property_name] = {
-      "name": property_name,
-      "type": property_type,
-      "modifier": property_modifier,
-      "description": property_description
-    }
+    property_key = " ".join([property_modifier, property_type, property_name]).strip()
+    interface[property_key] = property_description
+
   for method in get_element(data["en"].documentElement, "methods").childNodes:
     method_name = get_text(get_element(method, "name", "anwv")).strip()
     method_return_type = get_text(get_element(method, "return_type", "anwv")).strip()
     method_return_description = "$%sReturnDescription$" % method_name
     method_description = "$%sDescription$" % method_name
     method_version = get_text(get_element(method, "version", "anwv")).strip()
-    method_arguments = []
+    argument_descriptions = {}
+    argument_string = ""
     for argument in get_element(method, "arguments").childNodes:
       argument_name = get_text(get_element(argument, "name", "anwv")).strip()
       argument_type = get_text(get_element(argument, "type", "anwv")).strip()
-      argument_description = "$%sArgument%sDescription$" % (method_name, argument_name)
-
-      method_arguments.append({
-        "name": argument_name,
-        "type": argument_type,
-        "description": argument_description
-      })
-    interface["methods"][method_name] = {
-      "name": method_name,
-      "return_type": method_return_type,
-      "return_description": method_return_description,
+      argument_descriptions[argument_name] = "$%sArgument%sDescription$" % (method_name, argument_name)
+      argument_string += " %s %s," % (argument_type, argument_name)
+    argument_string = argument_string.strip().strip(",")
+    method_key = "%s %s(%s)" % (method_return_type, method_name, argument_string)
+    interface[method_key] = {
       "description": method_description,
+      "return_description": method_return_description,
       "version": method_version,
-      "arguments": method_arguments
+      "argument_descriptions": argument_descriptions
     }
 
   for locale, value in data.iteritems():
@@ -343,7 +334,7 @@ def process_interface(path):
     # Find all the translations for property, method and method argument descriptions
     for property in get_element(value.documentElement, "properties").childNodes:
       property_name = get_text(get_element(property, "name", "anwv")).strip()
-      property_description = re.sub(r"</?anwv/?>", "", get_text(get_element(property, "name", "anwv"))).strip()
+      property_description = re.sub(r"</?anwv/?>", "", get_element(property, "description", "anwv").toxml()).strip()
       if property_description and property_description.find("[untr]") < 0:
         strings[locale][property_name + "Description"] = { "message": property_description }
     for method in get_element(value.documentElement, "methods").childNodes:
@@ -361,6 +352,9 @@ def process_interface(path):
         argument_description = re.sub(r"</?anwv/?>", "", get_element(argument, "description", "anwv").firstChild.toxml()).strip()
         if argument_description and argument_description.find("[untr]") < 0:
           strings[locale][method_name + "Argument" + argument_name + "Description"] = { "message": argument_description }
+    # ... and sort them by their names
+    interface = OrderedDict(sorted(interface.iteritems(), key=lambda x: x[0].split("(")[0].strip().split()[-1]))
+
 
   # Translate the strings in the description
   process_body(descriptions, strings)
@@ -369,7 +363,10 @@ def process_interface(path):
   strings["en"]["methods_and_properties"] = {"message": "Methods and properties"}
 
   pagedata = re.sub(r"</?anwv/?>", "", descriptions["en"].toxml())
-  pagedata = "%s\n\n{%% set interface=%s %%}\n{%% include \"includes/interface\" %%}" % (pagedata, json.dumps(interface, indent=2, separators=(',', ': ')))
+  pagedata = "%s%s\n\n{%% set interface=%s %%}\n{%% include \"includes/interface\" %%}" % (
+    '<h2>{{ "general_notes" |translate }}</h2>',
+    pagedata, json.dumps(interface, indent=2, separators=(',', ': '))
+  )
 
   # Save the page's HTML
   target = os.path.join(output_dir, "pages", pagename + ".tmpl")
