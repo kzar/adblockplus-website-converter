@@ -127,7 +127,7 @@ def merge_children(nodes):
         i -= end - start
       start = None
 
-def process_body(nodes, strings, counter=1):
+def process_body(nodes, strings, value_format="%s$%s%s$%s", counter=1):
   if nodes["en"].nodeType == Node.ELEMENT_NODE:
     if nodes["en"].tagName not in ("style", "script", "fix", "pre"):
       merge_children(nodes)
@@ -136,11 +136,14 @@ def process_body(nodes, strings, counter=1):
         for locale, value in nodes.iteritems():
           if len(value.childNodes) > i:
             new_nodes[locale] = value.childNodes[i]
-        counter = process_body(new_nodes, strings, counter)
+        counter = process_body(new_nodes, strings, value_format, counter)
   elif nodes["en"].nodeType == Node.TEXT_NODE:
     if nodes["en"].nodeValue.strip():
       if hasattr(nodes["en"], "links") and len(nodes["en"].links):
-        links = "(%s)" % ", ".join(nodes["en"].links)
+        if value_format.find("translate") > -1:
+          links = "['%s']" % "', '".join(nodes["en"].links)
+        else:
+          links = "(%s)" % ", ".join(nodes["en"].links)
       else:
         links = ""
       # If an identical string has been stored on this page reuse it
@@ -154,7 +157,7 @@ def process_body(nodes, strings, counter=1):
         if string_key == "s%i" % counter and text and text.find("[untr]") < 0:
           text = re.sub("\n\s+", " ", text, flags=re.S)
           strings[locale][string_key] = {"message": h.unescape(text)}
-        value.nodeValue = "%s$%s%s$%s" % (pre, string_key, links, post)
+        value.nodeValue = value_format % (pre, string_key, links, post)
       counter += 1
   elif nodes["en"].nodeType == Node.COMMENT_NODE:
     pass
@@ -284,13 +287,16 @@ def process_image(path):
 
 def process_interface(path):
   def get_descriptions(node, key_name, tag_name="description"):
+    def smart_strip(s):
+      return (" " if re.search(r"^\s", s) else "") + s.strip() + (" " if re.search(r"\s$", s) else "")
+
     def get_paragraphs(nodes, current_paragraph=""):
       if len(nodes):
         if nodes[0].nodeType == Node.TEXT_NODE:
-          current_paragraph += nodes[0].nodeValue.strip() + " "
+          current_paragraph += smart_strip(nodes[0].nodeValue)
         elif nodes[0].nodeType == Node.ELEMENT_NODE:
-          if nodes[0].tagName in ["strong", "em", "tt"]:
-            current_paragraph += re.sub(r"(\<(\/?)(tt|sub)\>)+", r"<\2strong>", nodes[0].toxml()).strip() + " "
+          if nodes[0].tagName in ["strong", "em", "tt", "a"]:
+            current_paragraph += smart_strip(re.sub(r"(\<(\/?)(tt|sub|a[^\>]*)\>)+", r"<\2strong>", nodes[0].toxml()))
           else:
             return [current_paragraph.strip()] + get_paragraphs(nodes[0].childNodes + nodes[1:])
         if (len(nodes) == 1):
@@ -369,7 +375,7 @@ def process_interface(path):
         strings[locale].update(get_descriptions(argument, method_name + "Argument" + argument_name))
 
   # Translate the strings in the description
-  process_body(descriptions, strings)
+  process_body(descriptions, strings, "%s{{ '%s' |translate(None, %s) }}%s")
 
   strings["en"]["general_notes"] = { "message": "General notes" }
   strings["en"]["methods_and_properties"] = {"message": "Methods and properties" }
@@ -503,7 +509,7 @@ def process_subscriptionlist(path):
         strings[locale][subst_name] = { "message": subst_value }
 
   # Prepare the header and footer
-  process_body(footers, strings, process_body(headers, strings))
+  process_body(footers, strings, "%s$%s%s$%s", process_body(headers, strings))
 
   strings["en"]["maintainer_suffix"] = {"message": ""}
   strings["en"]["supplements_suffix"] = {"message": ""}
