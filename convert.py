@@ -58,6 +58,52 @@ def get_element(node, tagName, *args):
         return child
   return None
 
+def squash_attrs(node):
+  if node.nodeType == Node.ELEMENT_NODE:
+    for child in node.childNodes:
+      if child.nodeType == Node.ELEMENT_NODE and child.tagName == "attr":
+        node.setAttribute(child.getAttribute("name"), get_text(child))
+        node.removeChild(child)
+  return node
+
+def smart_strip(s):
+  return (" " if re.search(r"^\s", s) else "") + s.strip() + (" " if re.search(r"\s$", s) else "")
+
+def get_descriptions(strings, links, locale, node, key_name, tag_name="description"):
+  def get_paragraphs(nodes, current_paragraph=""):
+    if len(nodes):
+      if nodes[0].nodeType == Node.TEXT_NODE:
+        current_paragraph += smart_strip(nodes[0].nodeValue)
+      elif nodes[0].nodeType == Node.ELEMENT_NODE:
+        nodes[0] = squash_attrs(nodes[0])
+        if nodes[0].tagName in ["strong", "em", "tt"]:
+          current_paragraph += smart_strip(re.sub(r"(\<(\/?)(tt|sub|a[^\>]*)\>)+", r"<\2strong>", nodes[0].toxml()))
+        elif nodes[0].tagName == "a":
+          current_paragraph += smart_strip(nodes[0].toxml())
+        else:
+          return [current_paragraph.strip()] + get_paragraphs(nodes[0].childNodes + nodes[1:])
+      if (len(nodes) == 1):
+        return [current_paragraph.strip()]
+      else:
+        return get_paragraphs(nodes[1:], current_paragraph)
+    else:
+      return [current_paragraph.strip()]
+
+  i = 0
+  for paragraph in get_paragraphs(get_element(node, tag_name, "anwv").childNodes):
+    if paragraph:
+      if locale == "en":
+        paragraph_links = re.findall(r"href\s*=\s*['\"]([^'\"]+)['\"]", paragraph)
+        if paragraph_links:
+          links["%sDescription%s" % (key_name, i and str(i) or "")] = paragraph_links
+      paragraph = re.sub(r"\<(\/?)a\>", r"<\1a>", paragraph)
+      if paragraph.find("[untr]") < 0:
+        strings[locale]["%sDescription%s" % (key_name, i and str(i) or "")] = {
+          "message": paragraph
+        }
+      i += 1
+  return i
+
 def merge_children(nodes):
   def is_text(node):
     if node.nodeType == Node.TEXT_NODE:
@@ -108,11 +154,7 @@ def merge_children(nodes):
             links = []
             for child in parent.childNodes[start:end+1]:
               if child.nodeType == Node.ELEMENT_NODE and child.tagName == "a":
-                # Squash attr tags into a tags now so link strings are generated properly
-                for grandchild in child.childNodes:
-                  if grandchild.nodeType == Node.ELEMENT_NODE and grandchild.tagName == "attr":
-                    child.setAttribute(grandchild.getAttribute("name"), get_text(grandchild))
-                    child.removeChild(grandchild)
+                child = squash_attrs(child)
                 links.append(child.getAttribute("href"))
                 child.removeAttribute("href")
               text.append(child.toxml())
@@ -286,33 +328,6 @@ def process_image(path):
     handle.write(data)
 
 def process_interface(path):
-  def get_descriptions(node, key_name, tag_name="description"):
-    def smart_strip(s):
-      return (" " if re.search(r"^\s", s) else "") + s.strip() + (" " if re.search(r"\s$", s) else "")
-
-    def get_paragraphs(nodes, current_paragraph=""):
-      if len(nodes):
-        if nodes[0].nodeType == Node.TEXT_NODE:
-          current_paragraph += smart_strip(nodes[0].nodeValue)
-        elif nodes[0].nodeType == Node.ELEMENT_NODE:
-          if nodes[0].tagName in ["strong", "em", "tt", "a"]:
-            current_paragraph += smart_strip(re.sub(r"(\<(\/?)(tt|sub|a[^\>]*)\>)+", r"<\2strong>", nodes[0].toxml()))
-          else:
-            return [current_paragraph.strip()] + get_paragraphs(nodes[0].childNodes + nodes[1:])
-        if (len(nodes) == 1):
-          return [current_paragraph.strip()]
-        else:
-          return get_paragraphs(nodes[1:], current_paragraph)
-      else:
-        return [current_paragraph.strip()]
-    result = {}
-    i = 0
-    for paragraph in get_paragraphs(get_element(node, tag_name, "anwv").childNodes):
-      if paragraph and paragraph.find("[untr]") < 0:
-        result["%sDescription%s" % (key_name, i and str(i) or "")] = { "message": paragraph }
-        i += 1
-    return result
-
   pagename = os.path.join(os.path.dirname(path), os.path.basename(path).replace("interface!", ""))
   format = "%s/" + path.split("/", 1)[1]
   pagename = pagename.split("/", 1)[1]
@@ -354,6 +369,8 @@ def process_interface(path):
     # ... and sort them by their names
     interface = OrderedDict(sorted(interface.iteritems(), key=lambda x: x[0].split("(")[0].strip().split()[-1]))
 
+  links = {}
+
   for locale, value in data.iteritems():
     title = get_text(get_element(data[locale].documentElement, "title", "anwv")).strip()
     if title and title.find("[untr]") < 0:
@@ -365,14 +382,16 @@ def process_interface(path):
     # Find all the translations for property, method and method argument descriptions
     for property in get_element(value.documentElement, "properties").childNodes:
       property_name = get_text(get_element(property, "name", "anwv")).strip()
-      strings[locale].update(get_descriptions(property, property_name))
+      get_descriptions(strings, links, locale, property, property_name)
     for method in get_element(value.documentElement, "methods").childNodes:
       method_name = get_text(get_element(method, "name", "anwv")).strip()
-      strings[locale].update(get_descriptions(method, method_name))
-      strings[locale].update(get_descriptions(method, method_name + "Return", "return_description"))
+      get_descriptions(strings, links, locale, method, method_name)
+      get_descriptions(strings, links, locale, method, method_name +
+                       "Return", "return_description")
       for argument in get_element(method, "arguments").childNodes:
         argument_name = get_text(get_element(argument, "name", "anwv")).strip()
-        strings[locale].update(get_descriptions(argument, method_name + "Argument" + argument_name))
+        get_descriptions(strings, links, locale, argument, method_name +
+                         "Argument" + argument_name)
 
   # Translate the strings in the description
   process_body(descriptions, strings, "%s{{ '%s' |translate(None, %s) }}%s")
@@ -381,14 +400,19 @@ def process_interface(path):
   strings["en"]["methods_and_properties"] = {"message": "Methods and properties" }
 
   description_comment = ("\n\n{#\nProperty, method and method argument descriptions live in the locale files.\n" +
-                         "The convention is $propertynameDescription$, $methodnameDescription$ $methodnameReturnDescription\n" +
-                         "and $methodnameArgumentargumentnameDescription$. If you need more than one paragraph append\n" +
-                         "a number starting at one, for example $nameDescription1$ for the second paragraph.\n#}\n\n")
+                         "The convention is propertynameDescription, methodnameDescription methodnameReturnDescription\n" +
+                         "and methodnameArgumentargumentnameDescription. If you need more than one paragraph append\n" +
+                         "a number starting at one, for example nameDescription1 for the second paragraph.\n" +
+                         "If you need to add links to a description add a links dictionary that contains an array of link\n"
+                         "strings for the description key, for example {\"propertynameDescription\": [\"http://google.com\"]} #}\n\n")
 
   pagedata = re.sub(r"</?anwv/?>", "", descriptions["en"].toxml())
-  pagedata = "%s%s\n\n%s{%% set interface=%s %%}\n{%% include \"includes/interface\" %%}" % (
+  pagedata = "%s%s\n\n%s{%% set interface=%s %%}\n{%% set links=%s %%}\n{%% include \"includes/interface\" %%}" % (
     '<h2>{{ "general_notes" |translate }}</h2>',
-    pagedata, description_comment, json.dumps(interface, indent=2, separators=(',', ': '))
+    pagedata,
+    description_comment,
+    json.dumps(interface, indent=2, separators=(',', ': ')),
+    json.dumps(links, indent=2, separators=(',', ': '))
   )
 
   # Save the page's HTML
@@ -419,6 +443,28 @@ def process_preftable(path):
     strings[locale] = OrderedDict()
     tables[locale] = []
 
+  # Table sections
+  sections = []
+  for section in get_element(data["en"].documentElement, "sections").childNodes:
+    section_id = get_text(get_element(section, "id", "anwv")).strip()
+    new_section = {
+      "id": section_id,
+      "title": "%sTitle" % section_id,
+      "preferences": []
+    }
+    for preference in get_element(section, "preferences").childNodes:
+      preference_name = get_text(get_element(preference, "name", "anwv")).strip()
+      new_preference = {
+        "name": preference_name,
+        "empty": get_text(get_element(preference, "empty", "anwv")).strip(),
+        "default": get_text(get_element(preference, "default", "anwv")).strip(),
+        "description": "%sDescription" % preference_name
+      }
+      new_section["preferences"].append(new_preference)
+    sections.append(new_section)
+
+  links = {}
+
   for locale, value in data.iteritems():
     title = get_text(get_element(data[locale].documentElement, "title", "anwv")).strip()
     if title and title.find("[untr]") < 0:
@@ -426,8 +472,6 @@ def process_preftable(path):
 
     descriptions[locale] = get_element(value.documentElement, "description", "anwv")
 
-
-    # Table headers
     prefnamecol = get_text(get_element(value.documentElement, "prefnamecol", "anwv")).strip()
     if prefnamecol and prefnamecol.find("[untr]") < 0:
       strings[locale]["prefnamecol"] = { "message": prefnamecol }
@@ -437,35 +481,27 @@ def process_preftable(path):
     descriptioncol = get_text(get_element(value.documentElement, "descriptioncol", "anwv")).strip()
     if descriptioncol and descriptioncol.find("[untr]") < 0:
       strings[locale]["descriptioncol"] = { "message": descriptioncol }
-    # Table sections
-    section_counter = 0
-    for section in get_element(value.documentElement, "sections").childNodes:
-      sectionid = get_text(get_element(section, "id", "anwv")).strip()
-      if sectionid and sectionid.find("[untr]") < 0:
-        strings[locale]["section" + str(section_counter) + "id"] = { "message": sectionid }
-      sectiontitle = get_text(get_element(section, "title", "anwv")).strip()
-      if sectiontitle and sectiontitle.find("[untr]") < 0:
-        strings[locale]["section" + str(section_counter) + "title"] = { "message": sectiontitle }
-      section_preference_counter = 0
-      for section_preference in get_element(section, "preferences").childNodes:
-        for section_preference_property in section_preference.childNodes:
-          if section_preference_property.nodeType == Node.ELEMENT_NODE:
-            value = re.sub(r"</?anwv/?>", "", section_preference_property.firstChild.toxml()).strip()
-            value = re.sub(r'>\s*<attr\s+name="(\w+)">([^"<>]*)</attr\b', r' \1="\2"', value, flags=re.S)
-            if value and value.find("[untr]") < 0:
-              strings[locale]["section" + str(section_counter) + "preference" + str(section_preference_counter) + section_preference_property.tagName] = {
-                "message": value
-              }
-        section_preference_counter += 1
-      section_counter += 1
 
-  process_body(descriptions, strings)
+      for section in get_element(value.documentElement, "sections").childNodes:
+        section_id = get_text(get_element(section, "id", "anwv")).strip()
+        section_title = get_text(get_element(section, "title", "anwv")).strip()
+        if section_title and section_title.find("[untr]") < 0:
+          strings[locale][section_id + "Title"] = { "message": section_title }
+        for preference in get_element(section, "preferences").childNodes:
+          preference_name = get_text(get_element(preference, "name", "anwv")).strip()
+          get_descriptions(strings, links, locale, preference, preference_name)
 
-  pagedata = descriptions["en"].toxml()
-  pagedata = "template=preftable\n\n%s" % pagedata
+  process_body(descriptions, strings, "%s{{ '%s' |translate(None, %s) }}%s")
+
+  pagedata = re.sub(r"</?anwv/?>", "", descriptions["en"].toxml())
+  pagedata = "%s{%% set preftable=%s %%}\n{%% set links=%s %%}\n{%% include \"includes/preftable\" %%}" % (
+    pagedata,
+    json.dumps(sections, indent=2, separators=(',', ': ')),
+    json.dumps(links, indent=2, separators=(',', ': '))
+  )
 
   # Save the page's HTML
-  target = os.path.join(output_dir, "pages", pagename + ".raw")
+  target = os.path.join(output_dir, "pages", pagename + ".tmpl")
   ensure_dir(target)
   with codecs.open(target, "wb", encoding="utf-8") as handle:
     handle.write(pagedata)
