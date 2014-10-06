@@ -2,7 +2,7 @@
 
 ## Intro
 
-Small python script for converting the old website content from www repo (Anwiki content mirror) to our wwwnew repo (our CMS).
+Small python script for converting the old website content from [www repo](https://hg.adblockplus.org/www/) (Anwiki content mirror) to our [wwwnew repo](https://hg.adblockplus.org/wwwnew/) (our CMS).
 
 convert.py was created by palant, being tweaked by kzar. Once adblockplus.org has been migrated to our CMS this script will have served it's purpose.
 
