@@ -16,4 +16,4 @@ The script assumes that the repos have been cloned with a directory structure li
       ├── www
       └── wwwnew
 
-Just run `./convert.py` from the website-converter repo directory to convert the website content. To test the results run `python -m sitescripts.cms.bin.test_server .wwwnew/` from the sitescripts directory and browse to http://localhost:5000/ to see the results.
+Just run `./convert.py` from the website-converter repo directory to convert the website content. To test the results run `python -m sitescripts.cms.bin.test_server ../wwwnew/` from the sitescripts directory and browse to http://localhost:5000/ to see the results.
