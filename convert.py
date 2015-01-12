@@ -26,7 +26,7 @@ def read_xml(path):
     xml = xml.replace(' href="en"', ' href="index"')
     xml = xml.replace(' src="en/', ' src="')
     xml = re.sub(r"</?fix/?>", "", xml, flags=re.S)
-    return minidom.parseString("<!DOCTYPE root [<!ENTITY mdash \"&#8212;\"><!ENTITY nbsp \"&#xA0;\"><!ENTITY copy \"&#169;\">]><root>%s</root>" % xml)
+    return minidom.parseString("<!DOCTYPE root [<!ENTITY euro \"&#8364;\"><!ENTITY mdash \"&#8212;\"><!ENTITY nbsp \"&#xA0;\"><!ENTITY copy \"&#169;\">]><root>%s</root>" % xml)
 
 def save_locale(path, data):
   ensure_dir(path)
