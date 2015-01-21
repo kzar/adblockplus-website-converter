@@ -1,15 +1,17 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import sys, os, re, json, errno, codecs, itertools
+import HTMLParser, codecs, errno, itertools, json, os, re, sys
 from collections import OrderedDict
 from xml.dom import minidom, Node
-import HTMLParser
+
 h = HTMLParser.HTMLParser()
 
 output_dir = "../wwwnew"
 input_dir = "../www"
-locales = ("ar", "bg", "de", "en", "es", "fr", "he", "hu", "ko", "lt", "nl", "pt_BR", "ru", "sk", "zh_CN", "zh_TW")
+locales = ("ar", "bg", "de", "en", "es", "fr", "he", "hu", "ko", "lt", "nl",
+           "pt_BR", "ru", "sk", "zh_CN", "zh_TW")
+entities = {"euro": 8364, "mdash": 8212, "nbsp": 0xA0, "copy": 169}
 
 def ensure_dir(path):
   try:
@@ -26,7 +28,10 @@ def read_xml(path):
     xml = xml.replace(' href="en"', ' href="index"')
     xml = xml.replace(' src="en/', ' src="')
     xml = re.sub(r"</?fix/?>", "", xml, flags=re.S)
-    return minidom.parseString("<!DOCTYPE root [<!ENTITY euro \"&#8364;\"><!ENTITY mdash \"&#8212;\"><!ENTITY nbsp \"&#xA0;\"><!ENTITY copy \"&#169;\">]><root>%s</root>" % xml)
+    return minidom.parseString("<!DOCTYPE root [%s]><root>%s</root>" % (
+      "".join(["<!ENTITY %s \"&#%d;\">" % (k, v) for k,v in entities.iteritems()]),
+      xml
+    ))
 
 def save_locale(path, data):
   ensure_dir(path)
@@ -44,7 +49,6 @@ def get_text(node):
         "COMMENT_NODE", "DOCUMENT_NODE", "DOCUMENT_TYPE_NODE",
         "DOCUMENT_FRAGMENT_NODE", "NOTATION_NODE"
       ][child.nodeType])
-
 
     result.append(child.nodeValue)
   return "".join(result)
@@ -511,7 +515,6 @@ def process_preftable(path):
       localefile = os.path.join(output_dir, "locales", locale, pagename + ".json")
       save_locale(localefile, value)
 
-
 def process_subscriptionlist(path):
   pagename = os.path.join(os.path.dirname(path), os.path.basename(path).replace("subscriptionlist!", ""))
   format = "%s/" + path.split("/", 1)[1]
@@ -567,8 +570,6 @@ def process_subscriptionlist(path):
     if value:
       localefile = os.path.join(output_dir, "locales", locale, pagename + ".json")
       save_locale(localefile, value)
-
-
 
 def process_file(path, menu):
   if os.path.basename(path) in ("page!footer", "page!internet-explorer", "page!contribute-old"):
@@ -642,15 +643,16 @@ def process_menu():
           menu[locale][string] = {"message": text}
   return menu
 
-os.chdir(input_dir)
-menu = process_menu()
-process("page!en", menu)
-process("en", menu)
-process("images", menu)
+if __name__ == "__main__":
+  os.chdir(input_dir)
+  menu = process_menu()
+  process("page!en", menu)
+  process("en", menu)
+  process("images", menu)
 
-for locale, value in menu.iteritems():
-  if "_bugs" in value:
-    value["bugs"] = value["_bugs"]
-    del value["_bugs"]
-  localefile = os.path.join(output_dir, "locales", locale, "menu.json")
-  save_locale(localefile, value)
+  for locale, value in menu.iteritems():
+    if "_bugs" in value:
+      value["bugs"] = value["_bugs"]
+      del value["_bugs"]
+    localefile = os.path.join(output_dir, "locales", locale, "menu.json")
+    save_locale(localefile, value)
