@@ -398,7 +398,7 @@ def process_interface(path):
                          "Argument" + argument_name)
 
   # Translate the strings in the description
-  process_body(descriptions, strings, "%s{{ '%s' |translate(None, %s) }}%s")
+  process_body(descriptions, strings, "%s{{ '%s'|translate(None, %s) }}%s")
 
   strings["en"]["general_notes"] = { "message": "General notes" }
   strings["en"]["methods_and_properties"] = {"message": "Methods and properties" }
@@ -412,7 +412,7 @@ def process_interface(path):
 
   pagedata = re.sub(r"</?anwv/?>", "", descriptions["en"].toxml())
   pagedata = "%s%s\n\n%s{%% set interface=%s %%}\n{%% set links=%s %%}\n{%% include \"includes/interface\" %%}" % (
-    '<h2>{{ "general_notes" |translate }}</h2>',
+    '<h2>{{ "general_notes"|translate }}</h2>',
     pagedata,
     description_comment,
     json.dumps(interface, indent=2, separators=(',', ': ')),
@@ -495,7 +495,7 @@ def process_preftable(path):
           preference_name = get_text(get_element(preference, "name", "anwv")).strip()
           get_descriptions(strings, links, locale, preference, preference_name)
 
-  process_body(descriptions, strings, "%s{{ '%s' |translate(None, %s) }}%s")
+  process_body(descriptions, strings, "%s{{ '%s'|translate(None, %s) }}%s")
 
   pagedata = re.sub(r"</?anwv/?>", "", descriptions["en"].toxml())
   pagedata = "%s{%% set preftable=%s %%}\n{%% set links=%s %%}\n{%% include \"includes/preftable\" %%}" % (
@@ -548,8 +548,8 @@ def process_subscriptionlist(path):
         strings[locale][subst_name] = { "message": subst_value }
 
   # Prepare the header and footer
-  process_body(footers, strings, "%s{{ '%s' |translate(None, %s) }}%s",
-               process_body(headers, strings, "%s{{ '%s' |translate(None, %s) }}%s"))
+  process_body(footers, strings, "%s{{ '%s'|translate(None, %s) }}%s",
+               process_body(headers, strings, "%s{{ '%s'|translate(None, %s) }}%s"))
 
   strings["en"]["maintainer_suffix"] = {"message": ""}
   strings["en"]["supplements_suffix"] = {"message": ""}
