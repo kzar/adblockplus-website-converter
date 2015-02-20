@@ -1,0 +1,25 @@
+#!/bin/bash
+wget https://adblockplus.org/_override-static/global/global/css/main-desktop.css -O ../wwwnew/static/css/main-desktop.css
+wget https://adblockplus.org/_override-static/global/global/css/features.css -O ../wwwnew/static/css/features.css
+wget https://adblockplus.org/_override-static/global/global/css/index-desktop.css -O ../wwwnew/static/css/index-desktop.css
+wget https://adblockplus.org/_override-static/global/global/css/contribute.css -O ../wwwnew/static/css/contribute.css
+wget https://adblockplus.org/_override-static/global/global/css/topics.css -O ../wwwnew/static/css/topics.css
+wget https://adblockplus.org/_override-static/global/global/css/topics-desktop.css -O ../wwwnew/static/css/topics-desktop.css
+wget https://adblockplus.org/_override-static/global/global/css/topics-mobile.css -O ../wwwnew/static/css/topics-mobile.css
+wget https://adblockplus.org/_override-static/global/global/css/main.css -O ../wwwnew/static/css/main.css
+wget https://adblockplus.org/_override-static/global/global/css/main-mobile.css -O ../wwwnew/static/css/main-mobile.css
+wget https://adblockplus.org/_override-static/global/global/css/index.css -O ../wwwnew/static/css/index.css
+wget https://adblockplus.org/_override-static/global/global/css/empty.css -O ../wwwnew/static/css/empty.css
+wget https://adblockplus.org/_override-static/global/global/css/index-mobile.css -O ../wwwnew/static/css/index-mobile.css
+wget https://adblockplus.org/_override-static/global/global/css/noscript-desktop.css -O ../wwwnew/static/css/noscript-desktop.css
+wget https://adblockplus.org/_override-static/global/global/css/noscript-mobile.css -O ../wwwnew/static/css/noscript-mobile.css
+
+wget https://adblockplus.org/_override-static/global/global/img/maxthon-teaser.png -O ../wwwnew/static/img/maxthon-teaser.png
+wget https://adblockplus.org/_override-static/global/global/img/x.gif -O ../wwwnew/static/img/x.gif
+wget https://adblockplus.org/_override-static/global/global/img/sprite-main.png -O ../wwwnew/static/img/sprite-main.png
+wget https://adblockplus.org/_override-static/global/global/img/sprite-flags.png -O ../wwwnew/static/img/sprite-flags.png
+wget https://adblockplus.org/_override-static/global/global/img/background.png -O ../wwwnew/static/img/background.png
+wget https://adblockplus.org/_override-static/global/global/img/sprite-index.png -O ../wwwnew/static/img/sprite-index.png
+wget https://adblockplus.org/_override-static/global/global/img/sprite-features.png -O ../wwwnew/static/img/sprite-features.png
+wget https://adblockplus.org/_override-static/global/global/img/sprite-contribute.png -O ../wwwnew/static/img/sprite-contribute.png
+wget https://adblockplus.org/_override-static/global/global/img/adblockplus_128.png -O ../wwwnew/static/img/adblockplus_128.png
