@@ -100,6 +100,7 @@ def get_descriptions(strings, links, locale, node, key_name, tag_name="descripti
         paragraph_links = re.findall(r"href\s*=\s*['\"]([^'\"]+)['\"]", paragraph)
         if paragraph_links:
           links["%sDescription%s" % (key_name, i and str(i) or "")] = paragraph_links
+          paragraph = re.sub(r"<a[^>]+>", "<a>", paragraph)
       paragraph = re.sub(r"\<(\/?)a\>", r"<\1a>", paragraph)
       if paragraph.find("[untr]") < 0:
         strings[locale]["%sDescription%s" % (key_name, i and str(i) or "")] = {
