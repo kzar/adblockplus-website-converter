@@ -392,11 +392,11 @@ def process_interface(path):
       method_name = get_text(get_element(method, "name", "anwv")).strip()
       get_descriptions(strings, links, locale, method, method_name)
       get_descriptions(strings, links, locale, method, method_name +
-                       "Return", "return_description")
+                       "-return", "return_description")
       for argument in get_element(method, "arguments").childNodes:
         argument_name = get_text(get_element(argument, "name", "anwv")).strip()
         get_descriptions(strings, links, locale, argument, method_name +
-                         "Argument" + argument_name)
+                         "-" + argument_name)
 
   # Translate the strings in the description
   process_body(descriptions, strings, "%s{{ '%s'|translate(None, %s) }}%s")
@@ -405,8 +405,8 @@ def process_interface(path):
   strings["en"]["toc_header"] = {"message": "Methods and properties" }
 
   description_comment = ("\n\n{#\nProperty, method and method argument descriptions live in the locale files.\n" +
-                         "The convention is propertynameDescription, methodnameDescription methodnameReturnDescription\n" +
-                         "and methodnameArgumentargumentnameDescription. If you need more than one paragraph append\n" +
+                         "The convention is propertynameDescription, methodnameDescription methodname-returnDescription\n" +
+                         "and methodname-argumentnameDescription. If you need more than one paragraph append\n" +
                          "a number starting at one, for example nameDescription1 for the second paragraph.\n" +
                          "If you need to add links to a description add a links dictionary that contains an array of link\n"
                          "strings for the description key, for example {\"propertynameDescription\": [\"http://google.com\"]} #}\n\n")
