@@ -454,7 +454,6 @@ def process_preftable(path):
     section_id = get_text(get_element(section, "id", "anwv")).strip()
     new_section = {
       "id": section_id,
-      "title": "%sTitle" % section_id,
       "preferences": []
     }
     for preference in get_element(section, "preferences").childNodes:
