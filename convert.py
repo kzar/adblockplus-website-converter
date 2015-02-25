@@ -80,8 +80,8 @@ def get_descriptions(strings, links, locale, node, key_name, tag_name="descripti
         current_paragraph += smart_strip(nodes[0].nodeValue)
       elif nodes[0].nodeType == Node.ELEMENT_NODE:
         nodes[0] = squash_attrs(nodes[0])
-        if nodes[0].tagName in ["strong", "em", "tt"]:
-          current_paragraph += smart_strip(re.sub(r"(\<(\/?)(tt|sub|a[^\>]*)\>)+", r"<\2strong>", nodes[0].toxml()))
+        if nodes[0].tagName in ["strong", "em", "tt", "code"]:
+          current_paragraph += smart_strip(re.sub(r"(\<(\/?)(code|tt|sub|a[^\>]*)\>)+", r"<\2strong>", nodes[0].toxml()))
         elif nodes[0].tagName == "a":
           current_paragraph += smart_strip(nodes[0].toxml())
         else:
