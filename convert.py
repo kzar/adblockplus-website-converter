@@ -402,7 +402,7 @@ def process_interface(path):
   process_body(descriptions, strings, "%s{{ '%s'|translate(None, %s) }}%s")
 
   strings["en"]["general_notes"] = { "message": "General notes" }
-  strings["en"]["methods_and_properties"] = {"message": "Methods and properties" }
+  strings["en"]["toc_header"] = {"message": "Methods and properties" }
 
   description_comment = ("\n\n{#\nProperty, method and method argument descriptions live in the locale files.\n" +
                          "The convention is propertynameDescription, methodnameDescription methodnameReturnDescription\n" +
