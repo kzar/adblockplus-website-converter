@@ -465,6 +465,7 @@ def process_preftable(path):
         "description": "%sDescription" % preference_name
       }
       new_section["preferences"].append(new_preference)
+    new_section["preferences"].sort(key=lambda p: p["name"])
     sections.append(new_section)
 
   links = {}
