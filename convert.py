@@ -412,7 +412,7 @@ def process_interface(path):
                          "strings for the description key, for example {\"propertynameDescription\": [\"http://google.com\"]} #}\n\n")
 
   pagedata = re.sub(r"</?anwv/?>", "", descriptions["en"].toxml())
-  pagedata = "%s%s\n\n%s{%% set interface=%s %%}\n{%% set links=%s %%}\n{%% include \"includes/interface\" %%}" % (
+  pagedata = "%s%s\n\n%s{%% from \"includes/interface\" import display_interface with context %%}\n\n{{ display_interface(%s, %s) }}" % (
     '<h2>{{ "general_notes"|translate }}</h2>',
     pagedata,
     description_comment,
@@ -499,7 +499,7 @@ def process_preftable(path):
   process_body(descriptions, strings, "%s{{ '%s'|translate(None, %s) }}%s")
 
   pagedata = re.sub(r"</?anwv/?>", "", descriptions["en"].toxml())
-  pagedata = "%s{%% set preftable=%s %%}\n{%% set links=%s %%}\n{%% include \"includes/preftable\" %%}" % (
+  pagedata = "%s\n\n{%% from \"includes/preftable\" import display_preftable with context %%}\n\n{{ display_preftable(%s, %s) }}" % (
     pagedata,
     json.dumps(sections, indent=2, separators=(',', ': ')),
     json.dumps(links, indent=2, separators=(',', ': '))
@@ -555,8 +555,7 @@ def process_subscriptionlist(path):
   strings["en"]["maintainer_suffix"] = {"message": ""}
   strings["en"]["supplements_suffix"] = {"message": ""}
 
-  pagedata = ("{%% set subscriptions = 1|get_subscriptions %%}\n" +
-              "%s\n\n{%% include \"includes/subscriptionList\" %%}\n\n%s") % (
+  pagedata = ("%s\n\n{%% from \"includes/subscriptionList\" import display_subscriptions with context %%}\n{{ display_subscriptions(1|get_subscriptions) }}\n\n%s") % (
     headers["en"].toxml(), footers["en"].toxml()
   )
 
