@@ -460,9 +460,10 @@ def process_preftable(path):
       preference_name = get_text(get_element(preference, "name", "anwv")).strip()
       new_preference = {
         "name": preference_name,
-        "empty": get_text(get_element(preference, "empty", "anwv")).strip(),
         "default": get_text(get_element(preference, "default", "anwv")).strip()
       }
+      if get_text(get_element(preference, "empty", "anwv")).strip() == "true":
+        new_preference["default"] = None
       new_section["preferences"].append(new_preference)
     new_section["preferences"].sort(key=lambda p: p["name"])
     sections.append(new_section)
