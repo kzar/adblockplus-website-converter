@@ -555,8 +555,7 @@ def process_subscriptionlist(path):
   strings["en"]["maintainer_suffix"] = {"message": ""}
   strings["en"]["supplements_suffix"] = {"message": ""}
 
-  pagedata = ("{%% import \"includes/subscriptions\" as subscriptions %%}\n" +
-              "{%% set subscriptions = subscriptions.subscriptions %%}\n" +
+  pagedata = ("{%% set subscriptions = 1|get_subscriptions %%}\n" +
               "%s\n\n{%% include \"includes/subscriptionList\" %%}\n\n%s") % (
     headers["en"].toxml(), footers["en"].toxml()
   )
