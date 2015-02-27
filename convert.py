@@ -13,6 +13,23 @@ locales = ("ar", "bg", "de", "en", "es", "fr", "he", "hu", "ko", "lt", "nl",
            "pt_BR", "ru", "sk", "zh_CN", "zh_TW")
 entities = {"euro": 8364, "mdash": 8212, "nbsp": 0xA0, "copy": 169}
 
+license_header = """{#
+ # This file is part of the Adblock Plus website,
+ # Copyright (C) 2006-2015 Eyeo GmbH
+ #
+ # Adblock Plus is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License version 3 as
+ # published by the Free Software Foundation.
+ #
+ # Adblock Plus is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ # GNU General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with Adblock Plus.  If not, see <http://www.gnu.org/licenses/>.
+ #}"""
+
 def ensure_dir(path):
   try:
     os.makedirs(os.path.dirname(path))
@@ -298,9 +315,9 @@ def process_page(path, menu):
 
     pagedata = re.sub(r"\$([\w\-]+)\$", r'{{"\1"|translate}}', pagedata)
     pagedata = re.sub(r"\$([\w\-]+)\((.*?)\)\$", lambda match: translate_tag(match), pagedata)
-    pagedata = "noheading=True\nlocalefile=index\n\n%s" % pagedata
+    pagedata = "noheading=True\nlocalefile=index\n%s\n\n%s" % (license_header, pagedata)
   elif pagename == "acceptable-ads-manifesto":
-    pagedata = "template=minimal\n\n%s" % pagedata
+    pagedata = "template=minimal\n%s\n\n%s" % (license_header, pagedata)
 
   if pagename != "index" and titlestring != "title":
     pagedata = "title=%s\n\n%s" % (titlestring, pagedata)
@@ -412,7 +429,8 @@ def process_interface(path):
                          "strings for the description key, for example {\"propertynameDescription\": [\"http://google.com\"]} #}\n\n")
 
   pagedata = re.sub(r"</?anwv/?>", "", descriptions["en"].toxml())
-  pagedata = "%s%s\n\n%s{%% from \"includes/interface\" import display_interface with context %%}\n\n{{ display_interface(%s, %s) }}" % (
+  pagedata = "%s\n\n%s%s\n\n%s{%% from \"includes/interface\" import display_interface with context %%}\n\n{{ display_interface(%s, %s) }}" % (
+    license_header,
     '<h2>{{ "general_notes"|translate }}</h2>',
     pagedata,
     description_comment,
@@ -499,7 +517,8 @@ def process_preftable(path):
   process_body(descriptions, strings, "%s{{ '%s'|translate(None, %s) }}%s")
 
   pagedata = re.sub(r"</?anwv/?>", "", descriptions["en"].toxml())
-  pagedata = "%s\n\n{%% from \"includes/preftable\" import display_preftable with context %%}\n\n{{ display_preftable(%s, %s) }}" % (
+  pagedata = "%s\n\n%s\n\n{%% from \"includes/preftable\" import display_preftable with context %%}\n\n{{ display_preftable(%s, %s) }}" % (
+    license_header,
     pagedata,
     json.dumps(sections, indent=2, separators=(',', ': ')),
     json.dumps(links, indent=2, separators=(',', ': '))
@@ -555,8 +574,10 @@ def process_subscriptionlist(path):
   strings["en"]["maintainer_suffix"] = {"message": ""}
   strings["en"]["supplements_suffix"] = {"message": ""}
 
-  pagedata = ("%s\n\n{%% from \"includes/subscriptionList\" import display_subscriptions with context %%}\n{{ display_subscriptions(1|get_subscriptions) }}\n\n%s") % (
-    headers["en"].toxml(), footers["en"].toxml()
+  pagedata = ("%s\n\n%s\n\n{%% from \"includes/subscriptionList\" import display_subscriptions with context %%}\n{{ display_subscriptions(1|get_subscriptions) }}\n\n%s") % (
+    license_header,
+    headers["en"].toxml(),
+    footers["en"].toxml()
   )
 
   # Save the page's HTML
