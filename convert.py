@@ -44,7 +44,6 @@ def read_xml(path):
     xml = xml.replace(' href="en/', ' href="')
     xml = xml.replace(' href="en"', ' href="index"')
     xml = xml.replace(' src="en/', ' src="')
-    xml = re.sub(r"</?fix/?>", "", xml, flags=re.S)
     return minidom.parseString("<!DOCTYPE root [%s]><root>%s</root>" % (
       "".join(["<!ENTITY %s \"&#%d;\">" % (k, v) for k,v in entities.iteritems()]),
       xml
