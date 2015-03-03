@@ -344,8 +344,6 @@ def process_page(path, menu):
 def process_image(path):
   if path.split("/")[0] in locales:
     target = os.path.join(output_dir, "locales", os.path.dirname(path), os.path.basename(path).replace("image!", ""))
-  elif path.startswith("images/manifesto/") and not "background" in path:
-    target = os.path.join(output_dir, "locales", "en", os.path.dirname(path), os.path.basename(path).replace("image!", ""))
   else:
     target = os.path.join(output_dir, "static", os.path.dirname(path), os.path.basename(path).replace("image!", ""))
   with open(path, "rb") as handle:
