@@ -284,6 +284,7 @@ def process_page(path, menu):
     pagedata = body
 
   pagedata = pagedata.replace("/_override-static/global/global", "")
+  pagedata = re.sub(r"</?fix/?>", "", pagedata, flags=re.S)
 
   # <foo><attr name="bar">test</attr> => <foo bar="test">
   pagedata = re.sub(r'>\s*<attr\s+name="(\w+)">([^"<>]*)</attr\b', r' \1="\2"', pagedata, flags=re.S)
