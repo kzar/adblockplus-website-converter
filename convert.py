@@ -80,7 +80,7 @@ def get_element(node, tagName, *args):
 
 def squash_attrs(node):
   if node.nodeType == Node.ELEMENT_NODE:
-    for child in node.childNodes:
+    for child in list(node.childNodes):
       if child.nodeType == Node.ELEMENT_NODE and child.tagName == "attr":
         node.setAttribute(child.getAttribute("name"), get_text(child))
         node.removeChild(child)
@@ -200,6 +200,7 @@ def process_body(nodes, strings, value_format="%s$%s%s$%s", counter=1):
           if len(value.childNodes) > i:
             new_nodes[locale] = value.childNodes[i]
         counter = process_body(new_nodes, strings, value_format, counter)
+    squash_attrs(nodes["en"])
   elif nodes["en"].nodeType == Node.TEXT_NODE:
     message = nodes["en"].nodeValue.strip()
     if message:
@@ -236,9 +237,6 @@ def xml_to_text(xml):
   result = re.sub(r"</?anwv/?>", "", xml.toxml())
   result = result.replace("/_override-static/global/global", "")
   result = re.sub(r"</?fix/?>", "", result, flags=re.S)
-
-  # <foo><attr name="bar">test</attr> => <foo bar="test">
-  result = re.sub(r'>\s*<attr\s+name="(\w+)">([^"<>]*)</attr\b', r' \1="\2"', result, flags=re.S)
 
   # <script src=""/> => <script src=""></script>
   result = re.sub(r'<((?!link\b|meta\b|br\b|col\b|base\b|img\b|param\b|area\b|hr\b|input\b)([\w:]+)\b[^<>]*)/>', r'<\1></\2>', result, flags=re.S)
