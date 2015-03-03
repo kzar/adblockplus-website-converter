@@ -314,9 +314,9 @@ def process_page(path, menu):
 
     pagedata = re.sub(r"\$([\w\-]+)\$", r'{{"\1"|translate}}', pagedata)
     pagedata = re.sub(r"\$([\w\-]+)\((.*?)\)\$", lambda match: translate_tag(match), pagedata)
-    pagedata = "noheading=True\nlocalefile=index\n%s\n\n%s" % (license_header, pagedata)
+    pagedata = "noheading=True\nlocalefile=index\n\n%s\n\n%s" % (license_header, pagedata)
   elif pagename == "acceptable-ads-manifesto":
-    pagedata = "template=minimal\n%s\n\n%s" % (license_header, pagedata)
+    pagedata = "template=minimal\n\n%s\n\n%s" % (license_header, pagedata)
 
   if pagename != "index" and titlestring != "title":
     pagedata = "title=%s\n\n%s" % (titlestring, pagedata)
