@@ -232,6 +232,36 @@ def process_body(nodes, strings, value_format="%s$%s%s$%s", counter=1):
 
   return counter
 
+def xml_to_text(xml):
+  result = re.sub(r"</?anwv/?>", "", xml.toxml())
+  result = result.replace("/_override-static/global/global", "")
+  result = re.sub(r"</?fix/?>", "", result, flags=re.S)
+
+  # <foo><attr name="bar">test</attr> => <foo bar="test">
+  result = re.sub(r'>\s*<attr\s+name="(\w+)">([^"<>]*)</attr\b', r' \1="\2"', result, flags=re.S)
+
+  # <script src=""/> => <script src=""></script>
+  result = re.sub(r'<((?!link\b|meta\b|br\b|col\b|base\b|img\b|param\b|area\b|hr\b|input\b)([\w:]+)\b[^<>]*)/>', r'<\1></\2>', result, flags=re.S)
+
+  # <img src="foo"/> => <img src="foo">
+  result = re.sub(r'\/>', r'>', result)
+
+  # <img src="foo">dummy</img> => <img src="foo">
+  result = re.sub(r'<((link|meta|br|col|base|img|param|area|hr|input)\b[^<>]*)>([^<>]*)</\2>', r'<\1>', result, flags=re.S)
+
+  def translate_tabs(tabstop = 8):
+    offset = 0
+    def replace(match, offset=offset):
+      offset += match.start(0)
+      return " " * (tabstop - offset % tabstop)
+    return replace
+
+  # Remove some trailing whitespace and replace tabs with spaces
+  result = "\n".join([re.sub(r'\t', translate_tabs(8), s) for s in result.split("\n")])
+  result = re.sub(r'\ +\n', '\n', result, flags=re.S)
+
+  return result
+
 def process_page(path, menu):
   pagename = os.path.join(os.path.dirname(path), os.path.basename(path).replace("page!", ""))
   if "/" not in pagename:
@@ -279,38 +309,12 @@ def process_page(path, menu):
       container.setAttribute("class", "{{page}}")
   process_body(bodies, strings)
 
-  body = re.sub(r"</?anwv/?>", "", bodies["en"].toxml())
-  head = re.sub(r"</?anwv/?>", "", get_element(data["en"].documentElement, "head", "anwv").toxml())
+  body = xml_to_text(bodies["en"])
+  head = xml_to_text(get_element(data["en"].documentElement, "head", "anwv"))
   if head:
     pagedata = "<head>%s</head>%s" % (h.unescape(head), body)
   else:
     pagedata = body
-
-  pagedata = pagedata.replace("/_override-static/global/global", "")
-  pagedata = re.sub(r"</?fix/?>", "", pagedata, flags=re.S)
-
-  # <foo><attr name="bar">test</attr> => <foo bar="test">
-  pagedata = re.sub(r'>\s*<attr\s+name="(\w+)">([^"<>]*)</attr\b', r' \1="\2"', pagedata, flags=re.S)
-
-  # <script src=""/> => <script src=""></script>
-  pagedata = re.sub(r'<((?!link\b|meta\b|br\b|col\b|base\b|img\b|param\b|area\b|hr\b|input\b)([\w:]+)\b[^<>]*)/>', r'<\1></\2>', pagedata, flags=re.S)
-
-  # <img src="foo"/> => <img src="foo">
-  pagedata = re.sub(r'\/>', r'>', pagedata)
-
-  # <img src="foo">dummy</img> => <img src="foo">
-  pagedata = re.sub(r'<((link|meta|br|col|base|img|param|area|hr|input)\b[^<>]*)>([^<>]*)</\2>', r'<\1>', pagedata, flags=re.S)
-
-  def translate_tabs(tabstop = 8):
-    offset = 0
-    def replace(match, offset=offset):
-      offset += match.start(0)
-      return " " * (tabstop - offset % tabstop)
-    return replace
-
-  # Remove some trailing whitespace and replace tabs with spaces
-  pagedata = "\n".join([re.sub(r'\t', translate_tabs(8), s) for s in pagedata.split("\n")])
-  pagedata = re.sub(r'\ +\n', '\n', pagedata, flags=re.S)
 
   if pagename == "index":
     def translate_tag(match):
@@ -431,7 +435,7 @@ def process_interface(path):
                          "If you need to add links to a description add a links dictionary that contains an array of link\n"
                          "strings for the description key, for example {\"propertynameDescription\": [\"http://google.com\"]} #}\n\n")
 
-  pagedata = re.sub(r"</?anwv/?>", "", descriptions["en"].toxml())
+  pagedata = xml_to_text(descriptions["en"])
   pagedata = "%s\n\n%s%s\n\n%s{%% from \"includes/interface\" import display_interface with context %%}\n\n{{ display_interface(%s, %s) }}" % (
     license_header,
     '<h2>{{ "general_notes"|translate }}</h2>',
@@ -519,7 +523,7 @@ def process_preftable(path):
 
   process_body(descriptions, strings, "%s{{ '%s'|translate(None, %s) }}%s")
 
-  pagedata = re.sub(r"</?anwv/?>", "", descriptions["en"].toxml())
+  pagedata = xml_to_text(descriptions["en"])
   pagedata = "%s\n\n%s\n\n{%% from \"includes/preftable\" import display_preftable with context %%}\n\n{{ display_preftable(%s, %s) }}" % (
     license_header,
     pagedata,
@@ -579,8 +583,8 @@ def process_subscriptionlist(path):
 
   pagedata = ("%s\n\n%s\n\n{%% from \"includes/subscriptionList\" import display_subscriptions with context %%}\n{{ display_subscriptions(1|get_subscriptions) }}\n\n%s") % (
     license_header,
-    re.sub(r"</?anwv/?>", "", headers["en"].toxml()),
-    re.sub(r"</?anwv/?>", "", footers["en"].toxml())
+    xml_to_text(headers["en"]),
+    xml_to_text(footers["en"])
   )
 
   # Save the page's HTML
