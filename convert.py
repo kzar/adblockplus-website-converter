@@ -323,7 +323,7 @@ def process_page(path, menu):
     pagedata = re.sub(r"\$([\w\-]+)\$", r'{{"\1"|translate}}', pagedata)
     pagedata = re.sub(r"\$([\w\-]+)\((.*?)\)\$", lambda match: translate_tag(match), pagedata)
     pagedata = "noheading=True\nlocalefile=index\n\n%s\n\n%s" % (license_header, pagedata)
-  elif pagename == "acceptable-ads-manifesto":
+  elif pagename in ("acceptable-ads-manifesto", "share", "customize-youtube", "customize-facebook"):
     pagedata = "template=minimal\n\n%s" % pagedata
 
   if pagename != "index" and titlestring != "title":
