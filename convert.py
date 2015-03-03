@@ -575,8 +575,8 @@ def process_subscriptionlist(path):
 
   pagedata = ("%s\n\n%s\n\n{%% from \"includes/subscriptionList\" import display_subscriptions with context %%}\n{{ display_subscriptions(1|get_subscriptions) }}\n\n%s") % (
     license_header,
-    headers["en"].toxml(),
-    footers["en"].toxml()
+    re.sub(r"</?anwv/?>", "", headers["en"].toxml()),
+    re.sub(r"</?anwv/?>", "", footers["en"].toxml())
   )
 
   # Save the page's HTML
