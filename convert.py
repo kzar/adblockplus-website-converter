@@ -342,7 +342,7 @@ def process_page(path, menu):
       save_locale(localefile, value)
 
 def process_image(path):
-  if path.startswith("en/"):
+  if path.split("/")[0] in locales:
     target = os.path.join(output_dir, "locales", os.path.dirname(path), os.path.basename(path).replace("image!", ""))
   elif path.startswith("images/manifesto/") and not "background" in path:
     target = os.path.join(output_dir, "locales", "en", os.path.dirname(path), os.path.basename(path).replace("image!", ""))
@@ -354,6 +354,14 @@ def process_image(path):
   ensure_dir(target)
   with open(target, "wb") as handle:
     handle.write(data)
+
+  if path.startswith("en/"):
+    for locale in locales:
+      if locale == "en":
+        continue
+      new_path = locale + path[2:]
+      if os.path.exists(new_path):
+        process_image(new_path)
 
 def process_interface(path):
   pagename = os.path.join(os.path.dirname(path), os.path.basename(path).replace("interface!", ""))
