@@ -325,8 +325,7 @@ def process_page(path, menu):
     pagedata = "noheading=True\nlocalefile=index\n\n%s\n\n%s" % (license_header, pagedata)
   elif pagename in ("acceptable-ads-manifesto", "share", "customize-youtube", "customize-facebook"):
     pagedata = "template=minimal\n\n%s" % pagedata
-
-  if pagename != "index" and titlestring != "title":
+  elif titlestring != "title":
     pagedata = "title=%s\n\n%s" % (titlestring, pagedata)
 
   if pagename == "index":
