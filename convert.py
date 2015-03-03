@@ -201,7 +201,8 @@ def process_body(nodes, strings, value_format="%s$%s%s$%s", counter=1):
             new_nodes[locale] = value.childNodes[i]
         counter = process_body(new_nodes, strings, value_format, counter)
   elif nodes["en"].nodeType == Node.TEXT_NODE:
-    if nodes["en"].nodeValue.strip():
+    message = nodes["en"].nodeValue.strip()
+    if message:
       if hasattr(nodes["en"], "links") and len(nodes["en"].links):
         if value_format.find("translate") > -1:
           links = "['%s']" % "', '".join(nodes["en"].links)
@@ -210,10 +211,12 @@ def process_body(nodes, strings, value_format="%s$%s%s$%s", counter=1):
       else:
         links = ""
       # If an identical string has been stored on this page reuse it
-      try:
-        string_key = strings["en"].keys()[strings["en"].values().index({"message": nodes["en"].nodeValue.strip()})]
-      except ValueError:
-        string_key = "s%i" % counter
+      string_key = "s%i" % counter
+      if len(message) >= 8:
+        items = filter(lambda (k, v): v["message"] == message, strings["en"].iteritems())
+        if items:
+          string_key = items[0][0]
+
       for locale, value in nodes.iteritems():
         text = value.nodeValue or ""
         pre, text, post = re.search(r"^(\s*)(.*?)(\s*)$", text, re.S).groups()
