@@ -196,7 +196,7 @@ def merge_children(nodes):
         i -= end - start
       start = None
 
-def process_body(nodes, strings, counter=1):
+def process_body(nodes, strings, prefix="", counter=1):
   if nodes["en"].nodeType == Node.ELEMENT_NODE:
     if nodes["en"].tagName not in ("style", "script", "fix", "pre"):
       merge_children(nodes)
@@ -205,7 +205,7 @@ def process_body(nodes, strings, counter=1):
         for locale, value in nodes.iteritems():
           if len(value.childNodes) > i:
             new_nodes[locale] = value.childNodes[i]
-        counter = process_body(new_nodes, strings, counter)
+        counter = process_body(new_nodes, strings, prefix, counter)
     squash_attrs(nodes["en"])
   elif nodes["en"].nodeType == Node.TEXT_NODE:
     message = nodes["en"].nodeValue.strip()
@@ -215,7 +215,7 @@ def process_body(nodes, strings, counter=1):
       else:
         links = ""
       # If an identical string has been stored on this page reuse it
-      string_key = "s%i" % counter
+      string_key = prefix + "s%i" % counter
       if len(message) >= 8:
         items = filter(lambda (k, v): v["message"] == message, strings["en"].iteritems())
         if items:
@@ -224,7 +224,7 @@ def process_body(nodes, strings, counter=1):
       for locale, value in nodes.iteritems():
         text = value.nodeValue or ""
         pre, text, post = re.search(r"^(\s*)(.*?)(\s*)$", text, re.S).groups()
-        if string_key == "s%i" % counter and text and text.find("[untr]") < 0:
+        if string_key == prefix + "s%i" % counter and text and text.find("[untr]") < 0:
           text = re.sub("\n\s+", " ", text, flags=re.S)
           strings[locale][string_key] = {"message": h.unescape(text)}
         value.nodeValue = "%s$%s%s$%s" % (pre, string_key, links, post)
@@ -366,7 +366,6 @@ def process_interface(path):
 
   data = {}
   strings = {}
-  descriptions = {}
 
   for locale in locales:
     if not os.path.exists(format % locale):
@@ -382,69 +381,100 @@ def process_interface(path):
     property_type = get_text(get_element(property, "type", "anwv")).strip()
     property_modifier = get_text(get_element(property, "modifier", "anwv")).strip()
     property_key = " ".join([property_modifier, property_type, property_name]).strip()
-    interface[property_key] = None
+
+    interface[property_key] = OrderedDict({
+      "description": "$%sDescription$" % property_name
+    })
 
   for method in get_element(data["en"].documentElement, "methods").childNodes:
     method_name = get_text(get_element(method, "name", "anwv")).strip()
     method_return_type = get_text(get_element(method, "return_type", "anwv")).strip()
     method_version = get_text(get_element(method, "version", "anwv")).strip()
     argument_string = ""
+    argument_names = []
     for argument in get_element(method, "arguments").childNodes:
       argument_name = get_text(get_element(argument, "name", "anwv")).strip()
       argument_type = get_text(get_element(argument, "type", "anwv")).strip()
       argument_string += " %s %s," % (argument_type, argument_name)
+      argument_names.append(argument_name)
     argument_string = argument_string.strip().strip(",")
     method_key = "%s %s(%s)" % (method_return_type, method_name, argument_string)
-    interface[method_key] = {}
+
+    interface[method_key] = OrderedDict({
+      "description": "$%sDescription$" % method_name
+    })
+    for argument_name in argument_names:
+      interface[method_key]["description-%s" % argument_name] = "$%s_%sDescription$" % (method_name, argument_name)
+    if method_return_type != "void":
+      interface[method_key]["description-return"] = "$%s_returnDescription$" % method_name
     if method_version:
       interface[method_key]["version"] = method_version
 
   # ... and sort them by their names
   interface = OrderedDict(sorted(interface.iteritems(), key=lambda x: x[0].split("(")[0].strip().split()[-1]))
 
-  links = {}
-
+  descriptions = OrderedDict()
   for locale, value in data.iteritems():
+    def set_description(key, element):
+      if not key in descriptions:
+        descriptions[key] = {}
+      descriptions[key][locale] = element
+
     extract_string(strings[locale], "title", value.documentElement, "title", "anwv")
 
     # Store the description blocks
-    descriptions[locale] = get_element(value.documentElement, "description", "anwv")
+    set_description("", get_element(value.documentElement, "description", "anwv"))
 
     # Find all the translations for property, method and method argument descriptions
     for property in get_element(value.documentElement, "properties").childNodes:
       property_name = get_text(get_element(property, "name", "anwv")).strip()
-      get_descriptions(strings, links, locale, property, property_name)
+      set_description(property_name + "Description",
+          get_element(property, "description", "anwv"))
     for method in get_element(value.documentElement, "methods").childNodes:
       method_name = get_text(get_element(method, "name", "anwv")).strip()
-      get_descriptions(strings, links, locale, method, method_name)
-      get_descriptions(strings, links, locale, method, method_name +
-                       "-return", "return_description")
+      set_description(method_name + "Description",
+          get_element(method, "description", "anwv"))
+      set_description(method_name + "_returnDescription",
+          get_element(method, "return_description", "anwv"))
       for argument in get_element(method, "arguments").childNodes:
         argument_name = get_text(get_element(argument, "name", "anwv")).strip()
-        get_descriptions(strings, links, locale, argument, method_name +
-                         "-" + argument_name)
+        set_description(method_name + "_" + argument_name + "Description",
+            get_element(argument, "description", "anwv"))
 
   # Translate the strings in the description
-  process_body(descriptions, strings)
+  for key in descriptions:
+    process_body(descriptions[key], strings, key + "-" if key else "")
 
   strings["en"]["general_notes"] = { "message": "General notes" }
   strings["en"]["toc_header"] = {"message": "Methods and properties" }
 
-  description_comment = ("\n\n{#\nProperty, method and method argument descriptions live in the locale files.\n" +
-                         "The convention is propertynameDescription, methodnameDescription methodname-returnDescription\n" +
-                         "and methodname-argumentnameDescription. If you need more than one paragraph append\n" +
-                         "a number starting at one, for example nameDescription1 for the second paragraph.\n" +
-                         "If you need to add links to a description add a links dictionary that contains an array of link\n"
-                         "strings for the description key, for example {\"propertynameDescription\": [\"http://google.com\"]} #}\n\n")
+  pagedata = ""
+  for key, value in descriptions.iteritems():
+    if key:
+      pagedata += "{%% macro %s() %%}\n" % key
+    pagedata += raw_to_template(xml_to_text(value["en"])).lstrip()
+    if key:
+      pagedata += "{% endmacro %}\n"
+    pagedata += "\n"
 
-  pagedata = raw_to_template(xml_to_text(descriptions["en"]))
-  pagedata = "%s\n\n%s%s\n\n%s{%% from \"includes/interface\" import display_interface with context %%}\n\n{{ display_interface(%s, %s) }}" % (
+  pagedata = """%s
+
+%s
+
+%s
+{#
+  Property, method and method argument descriptions are defined in the macros
+  above and only referenced here.
+#}
+
+{%% from "includes/interface" import display_interface %%}
+
+{{ display_interface(%s) }}
+""" % (
     license_header,
     '<h2>{{ "general_notes"|translate }}</h2>',
     pagedata,
-    description_comment,
-    json.dumps(interface, indent=2, separators=(',', ': ')),
-    json.dumps(links, indent=2, separators=(',', ': '))
+    re.sub(r'"\$(.*?)\$"', r'\1', json.dumps(interface, indent=2, separators=(',', ': ')))
   )
 
   # Save the page's HTML
@@ -563,7 +593,7 @@ def process_subscriptionlist(path):
       extract_string(strings[locale], subst_name, subst, "text", "anwv")
 
   # Prepare the header and footer
-  process_body(footers, strings, process_body(headers, strings))
+  process_body(footers, strings, counter=process_body(headers, strings))
 
   strings["en"]["maintainer_suffix"] = {"message": ""}
   strings["en"]["supplements_suffix"] = {"message": ""}
