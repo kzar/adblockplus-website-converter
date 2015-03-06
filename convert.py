@@ -190,7 +190,7 @@ def merge_children(nodes):
         i -= end - start
       start = None
 
-def process_body(nodes, strings, value_format="%s$%s%s$%s", counter=1):
+def process_body(nodes, strings, counter=1):
   if nodes["en"].nodeType == Node.ELEMENT_NODE:
     if nodes["en"].tagName not in ("style", "script", "fix", "pre"):
       merge_children(nodes)
@@ -199,16 +199,13 @@ def process_body(nodes, strings, value_format="%s$%s%s$%s", counter=1):
         for locale, value in nodes.iteritems():
           if len(value.childNodes) > i:
             new_nodes[locale] = value.childNodes[i]
-        counter = process_body(new_nodes, strings, value_format, counter)
+        counter = process_body(new_nodes, strings, counter)
     squash_attrs(nodes["en"])
   elif nodes["en"].nodeType == Node.TEXT_NODE:
     message = nodes["en"].nodeValue.strip()
     if message:
       if hasattr(nodes["en"], "links") and len(nodes["en"].links):
-        if value_format.find("translate") > -1:
-          links = "['%s']" % "', '".join(nodes["en"].links)
-        else:
-          links = "(%s)" % ", ".join(nodes["en"].links)
+        links = "(%s)" % ", ".join(nodes["en"].links)
       else:
         links = ""
       # If an identical string has been stored on this page reuse it
@@ -224,7 +221,7 @@ def process_body(nodes, strings, value_format="%s$%s%s$%s", counter=1):
         if string_key == "s%i" % counter and text and text.find("[untr]") < 0:
           text = re.sub("\n\s+", " ", text, flags=re.S)
           strings[locale][string_key] = {"message": h.unescape(text)}
-        value.nodeValue = value_format % (pre, string_key, links, post)
+        value.nodeValue = "%s$%s%s$%s" % (pre, string_key, links, post)
       counter += 1
   elif nodes["en"].nodeType == Node.COMMENT_NODE:
     pass
@@ -259,6 +256,14 @@ def xml_to_text(xml):
   result = re.sub(r'\ +\n', '\n', result, flags=re.S)
 
   return result
+
+def raw_to_template(text):
+  def translate_tag(match):
+    return r'{{"%s"|translate(links=[%s])}}' % (match.group(1), '"%s"' % '", "'.join(match.group(2).split(", ")))
+
+  text = re.sub(r"\$([\w\-]+)\$", r'{{"\1"|translate}}', text)
+  text = re.sub(r"\$([\w\-]+)\((.*?)\)\$", lambda match: translate_tag(match), text)
+  return text
 
 def process_page(path, menu):
   pagename = os.path.join(os.path.dirname(path), os.path.basename(path).replace("page!", ""))
@@ -311,12 +316,7 @@ def process_page(path, menu):
     pagedata = body
 
   if pagename == "index":
-    def translate_tag(match):
-      return r'{{"%s"|translate(links=[%s])}}' % (match.group(1), '"%s"' % '", "'.join(match.group(2).split(", ")))
-
-    pagedata = re.sub(r"\$([\w\-]+)\$", r'{{"\1"|translate}}', pagedata)
-    pagedata = re.sub(r"\$([\w\-]+)\((.*?)\)\$", lambda match: translate_tag(match), pagedata)
-    pagedata = "noheading=True\nlocalefile=index\n\n%s\n\n%s" % (license_header, pagedata)
+    pagedata = "noheading=True\nlocalefile=index\n\n%s\n\n%s" % (license_header, raw_to_template(pagedata))
   elif pagename in ("acceptable-ads-manifesto", "share", "customize-youtube", "customize-facebook"):
     pagedata = "template=minimal\n\n%s" % pagedata
   elif titlestring != "title":
@@ -422,7 +422,7 @@ def process_interface(path):
                          "-" + argument_name)
 
   # Translate the strings in the description
-  process_body(descriptions, strings, "%s{{ '%s'|translate(None, %s) }}%s")
+  process_body(descriptions, strings)
 
   strings["en"]["general_notes"] = { "message": "General notes" }
   strings["en"]["toc_header"] = {"message": "Methods and properties" }
@@ -434,7 +434,7 @@ def process_interface(path):
                          "If you need to add links to a description add a links dictionary that contains an array of link\n"
                          "strings for the description key, for example {\"propertynameDescription\": [\"http://google.com\"]} #}\n\n")
 
-  pagedata = xml_to_text(descriptions["en"])
+  pagedata = raw_to_template(xml_to_text(descriptions["en"]))
   pagedata = "%s\n\n%s%s\n\n%s{%% from \"includes/interface\" import display_interface with context %%}\n\n{{ display_interface(%s, %s) }}" % (
     license_header,
     '<h2>{{ "general_notes"|translate }}</h2>',
@@ -520,9 +520,9 @@ def process_preftable(path):
           preference_name = get_text(get_element(preference, "name", "anwv")).strip()
           get_descriptions(strings, links, locale, preference, preference_name)
 
-  process_body(descriptions, strings, "%s{{ '%s'|translate(None, %s) }}%s")
+  process_body(descriptions, strings)
 
-  pagedata = xml_to_text(descriptions["en"])
+  pagedata = raw_to_template(xml_to_text(descriptions["en"]))
   pagedata = "%s\n\n%s\n\n{%% from \"includes/preftable\" import display_preftable with context %%}\n\n{{ display_preftable(%s, %s) }}" % (
     license_header,
     pagedata,
@@ -574,16 +574,15 @@ def process_subscriptionlist(path):
         strings[locale][subst_name] = { "message": subst_value }
 
   # Prepare the header and footer
-  process_body(footers, strings, "%s{{ '%s'|translate(None, %s) }}%s",
-               process_body(headers, strings, "%s{{ '%s'|translate(None, %s) }}%s"))
+  process_body(footers, strings, process_body(headers, strings))
 
   strings["en"]["maintainer_suffix"] = {"message": ""}
   strings["en"]["supplements_suffix"] = {"message": ""}
 
   pagedata = ("%s\n\n%s\n\n{%% from \"includes/subscriptionList\" import display_subscriptions with context %%}\n{{ display_subscriptions(1|get_subscriptions) }}\n\n%s") % (
     license_header,
-    xml_to_text(headers["en"]),
-    xml_to_text(footers["en"])
+    raw_to_template(xml_to_text(headers["en"])),
+    raw_to_template(xml_to_text(footers["en"]))
   )
 
   # Save the page's HTML
