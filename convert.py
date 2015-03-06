@@ -92,45 +92,6 @@ def squash_attrs(node):
         node.removeChild(child)
   return node
 
-def smart_strip(s):
-  return (" " if re.search(r"^\s", s) else "") + s.strip() + (" " if re.search(r"\s$", s) else "")
-
-def get_descriptions(strings, links, locale, node, key_name, tag_name="description"):
-  def get_paragraphs(nodes, current_paragraph=""):
-    if len(nodes):
-      if nodes[0].nodeType == Node.TEXT_NODE:
-        current_paragraph += smart_strip(nodes[0].nodeValue)
-      elif nodes[0].nodeType == Node.ELEMENT_NODE:
-        nodes[0] = squash_attrs(nodes[0])
-        if nodes[0].tagName in ["strong", "em", "tt", "code"]:
-          current_paragraph += smart_strip(re.sub(r"(\<(\/?)(code|tt|sub|a[^\>]*)\>)+", r"<\2strong>", nodes[0].toxml()))
-        elif nodes[0].tagName == "a":
-          current_paragraph += smart_strip(nodes[0].toxml())
-        else:
-          return [current_paragraph.strip()] + get_paragraphs(nodes[0].childNodes + nodes[1:])
-      if (len(nodes) == 1):
-        return [current_paragraph.strip()]
-      else:
-        return get_paragraphs(nodes[1:], current_paragraph)
-    else:
-      return [current_paragraph.strip()]
-
-  i = 0
-  for paragraph in get_paragraphs(get_element(node, tag_name, "anwv").childNodes):
-    if paragraph:
-      if locale == "en":
-        paragraph_links = re.findall(r"href\s*=\s*['\"]([^'\"]+)['\"]", paragraph)
-        if paragraph_links:
-          links["%sDescription%s" % (key_name, i and str(i) or "")] = paragraph_links
-          paragraph = re.sub(r"<a[^>]+>", "<a>", paragraph)
-      paragraph = re.sub(r"\<(\/?)a\>", r"<\1a>", paragraph)
-      if paragraph.find("[untr]") < 0:
-        strings[locale]["%sDescription%s" % (key_name, i and str(i) or "")] = {
-          "message": paragraph
-        }
-      i += 1
-  return i
-
 def merge_children(nodes):
   def is_text(node):
     if node.nodeType == Node.TEXT_NODE:
@@ -441,7 +402,7 @@ def process_interface(path):
         set_description(method_name + "_" + argument_name + "Description",
             get_element(argument, "description", "anwv"))
 
-  # Translate the strings in the description
+  # Translate the strings in the descriptions
   for key in descriptions:
     process_body(descriptions[key], strings, key + "-" if key else "")
 
@@ -509,28 +470,31 @@ def process_preftable(path):
   sections = []
   for section in get_element(data["en"].documentElement, "sections").childNodes:
     section_id = get_text(get_element(section, "id", "anwv")).strip()
-    new_section = {
-      "id": section_id,
-      "preferences": []
-    }
+    new_section = OrderedDict(id=section_id)
+    new_section["title"] = "$'%sTitle'|translate$" % section_id
+    new_section["preferences"] = []
+
     for preference in get_element(section, "preferences").childNodes:
       preference_name = get_text(get_element(preference, "name", "anwv")).strip()
-      new_preference = {
-        "name": preference_name,
-        "default": get_text(get_element(preference, "default", "anwv")).strip()
-      }
+      new_preference = OrderedDict(name=preference_name)
+      new_preference["default"] = get_text(get_element(preference, "default", "anwv")).strip()
       if get_text(get_element(preference, "empty", "anwv")).strip() == "true":
-        new_preference["default"] = None
+        new_preference["default"] = "$None$"
+      new_preference["description"] = "$%sDescription$" % re.sub(r'\W', '', preference_name)
       new_section["preferences"].append(new_preference)
     new_section["preferences"].sort(key=lambda p: p["name"])
     sections.append(new_section)
 
-  links = {}
-
+  descriptions = OrderedDict()
   for locale, value in data.iteritems():
+    def set_description(key, element):
+      if not key in descriptions:
+        descriptions[key] = {}
+      descriptions[key][locale] = element
+
     extract_string(strings[locale], "title", value.documentElement, "title", "anwv")
 
-    descriptions[locale] = get_element(value.documentElement, "description", "anwv")
+    set_description("", get_element(value.documentElement, "description", "anwv"))
 
     extract_string(strings[locale], "prefnamecol", value.documentElement, "prefnamecol", "anwv")
     extract_string(strings[locale], "defaultcol", value.documentElement, "defaultcol", "anwv")
@@ -541,16 +505,36 @@ def process_preftable(path):
       extract_string(strings[locale], section_id + "Title", section, "title", "anwv")
       for preference in get_element(section, "preferences").childNodes:
         preference_name = get_text(get_element(preference, "name", "anwv")).strip()
-        get_descriptions(strings, links, locale, preference, preference_name)
+        set_description(preference_name, get_element(preference, "description", "anwv"))
 
-  process_body(descriptions, strings)
+  # Translate the strings in the descriptions
+  for key in descriptions:
+    process_body(descriptions[key], strings, key + "-" if key else "")
 
-  pagedata = raw_to_template(xml_to_text(descriptions["en"]))
-  pagedata = "%s\n\n%s\n\n{%% from \"includes/preftable\" import display_preftable with context %%}\n\n{{ display_preftable(%s, %s) }}" % (
+  pagedata = ""
+  for key, value in descriptions.iteritems():
+    if key:
+      pagedata += "{%% macro %sDescription() %%}\n" % re.sub(r'\W', '', key)
+    pagedata += raw_to_template(xml_to_text(value["en"])).lstrip()
+    if key:
+      pagedata += "{% endmacro %}\n"
+    pagedata += "\n"
+
+  pagedata = """%s
+
+%s
+{#
+  Preference descriptions are defined in the macros above and only referenced
+  here.
+#}
+
+{%% from "includes/preftable" import display_preftable %%}
+
+{{ display_preftable(%s) }}
+""" % (
     license_header,
     pagedata,
-    json.dumps(sections, indent=2, separators=(',', ': ')),
-    json.dumps(links, indent=2, separators=(',', ': '))
+    re.sub(r'"\$(.*?)\$"', r'\1', json.dumps(sections, indent=2, separators=(',', ': ')))
   )
 
   # Save the page's HTML
