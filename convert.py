@@ -582,7 +582,7 @@ def process_subscriptionlist(path):
   strings["en"]["maintainer_suffix"] = {"message": ""}
   strings["en"]["supplements_suffix"] = {"message": ""}
 
-  pagedata = ("%s\n\n%s\n\n{%% from \"includes/subscriptionList\" import display_subscriptions with context %%}\n{{ display_subscriptions(1|get_subscriptions) }}\n\n%s") % (
+  pagedata = ("%s\n\n%s\n\n{%% from \"includes/subscriptionList\" import display_subscriptions %%}\n{{ display_subscriptions(1|get_subscriptions) }}\n\n%s") % (
     license_header,
     raw_to_template(xml_to_text(headers["en"])),
     raw_to_template(xml_to_text(footers["en"]))
