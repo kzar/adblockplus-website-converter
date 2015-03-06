@@ -282,8 +282,8 @@ def process_page(path, menu):
     data[locale] = read_xml(format % locale)
     strings[locale] = OrderedDict()
 
-  for locale in data.iterkeys():
-    title = get_text(get_element(data[locale].documentElement, "title", "anwv")).strip()
+  for locale, value in data.iteritems():
+    title = get_text(get_element(value.documentElement, "title", "anwv")).strip()
     if title and title.find("[untr]") < 0:
       strings[locale]["title"] = {"message": title}
 
@@ -400,7 +400,7 @@ def process_interface(path):
   links = {}
 
   for locale, value in data.iteritems():
-    title = get_text(get_element(data[locale].documentElement, "title", "anwv")).strip()
+    title = get_text(get_element(value.documentElement, "title", "anwv")).strip()
     if title and title.find("[untr]") < 0:
       strings[locale]["title"] = {"message": title}
 
@@ -495,7 +495,7 @@ def process_preftable(path):
   links = {}
 
   for locale, value in data.iteritems():
-    title = get_text(get_element(data[locale].documentElement, "title", "anwv")).strip()
+    title = get_text(get_element(value.documentElement, "title", "anwv")).strip()
     if title and title.find("[untr]") < 0:
       strings[locale]["title"] = {"message": title}
 
@@ -560,7 +560,7 @@ def process_subscriptionlist(path):
     tables[locale] = []
 
   for locale, value in data.iteritems():
-    title = get_text(get_element(data[locale].documentElement, "title", "anwv")).strip()
+    title = get_text(get_element(value.documentElement, "title", "anwv")).strip()
     if title and title.find("[untr]") < 0:
       strings[locale]["title"] = {"message": title}
 
