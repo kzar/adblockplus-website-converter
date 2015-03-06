@@ -187,7 +187,7 @@ def process_body(nodes, strings, prefix="", counter=1):
         pre, text, post = re.search(r"^(\s*)(.*?)(\s*)$", text, re.S).groups()
         if string_key == prefix + "s%i" % counter and text and text.find("[untr]") < 0:
           text = re.sub("\n\s+", " ", text, flags=re.S)
-          strings[locale][string_key] = {"message": h.unescape(text)}
+          strings[locale][string_key] = {"message": re.sub(r'\s+--(?!>)', u'\u00A0\u2014', h.unescape(text))}
         value.nodeValue = "%s$%s%s$%s" % (pre, string_key, links, post)
       counter += 1
   elif nodes["en"].nodeType == Node.COMMENT_NODE:
