@@ -78,6 +78,12 @@ def get_element(node, tagName, *args):
         return child
   return None
 
+def extract_string(strings, property, *element_selector):
+  element = get_element(*element_selector) if len(element_selector) > 1 else element_selector[0]
+  text = get_text(element).strip()
+  if text and "[untr]" not in text:
+    strings[property] = {"message": text}
+
 def squash_attrs(node):
   if node.nodeType == Node.ELEMENT_NODE:
     for child in list(node.childNodes):
@@ -283,9 +289,7 @@ def process_page(path, menu):
     strings[locale] = OrderedDict()
 
   for locale, value in data.iteritems():
-    title = get_text(get_element(value.documentElement, "title", "anwv")).strip()
-    if title and title.find("[untr]") < 0:
-      strings[locale]["title"] = {"message": title}
+    extract_string(strings[locale], "title", value.documentElement, "title", "anwv")
 
   titlestring = "title"
   if pagename in menu["en"]:
@@ -401,9 +405,7 @@ def process_interface(path):
   links = {}
 
   for locale, value in data.iteritems():
-    title = get_text(get_element(value.documentElement, "title", "anwv")).strip()
-    if title and title.find("[untr]") < 0:
-      strings[locale]["title"] = {"message": title}
+    extract_string(strings[locale], "title", value.documentElement, "title", "anwv")
 
     # Store the description blocks
     descriptions[locale] = get_element(value.documentElement, "description", "anwv")
@@ -496,30 +498,20 @@ def process_preftable(path):
   links = {}
 
   for locale, value in data.iteritems():
-    title = get_text(get_element(value.documentElement, "title", "anwv")).strip()
-    if title and title.find("[untr]") < 0:
-      strings[locale]["title"] = {"message": title}
+    extract_string(strings[locale], "title", value.documentElement, "title", "anwv")
 
     descriptions[locale] = get_element(value.documentElement, "description", "anwv")
 
-    prefnamecol = get_text(get_element(value.documentElement, "prefnamecol", "anwv")).strip()
-    if prefnamecol and prefnamecol.find("[untr]") < 0:
-      strings[locale]["prefnamecol"] = { "message": prefnamecol }
-    defaultcol = get_text(get_element(value.documentElement, "defaultcol", "anwv")).strip()
-    if defaultcol and prefnamecol.find("[untr]") < 0:
-      strings[locale]["defaultcol"] = { "message": defaultcol }
-    descriptioncol = get_text(get_element(value.documentElement, "descriptioncol", "anwv")).strip()
-    if descriptioncol and descriptioncol.find("[untr]") < 0:
-      strings[locale]["descriptioncol"] = { "message": descriptioncol }
+    extract_string(strings[locale], "prefnamecol", value.documentElement, "prefnamecol", "anwv")
+    extract_string(strings[locale], "defaultcol", value.documentElement, "defaultcol", "anwv")
+    extract_string(strings[locale], "descriptioncol", value.documentElement, "descriptioncol", "anwv")
 
-      for section in get_element(value.documentElement, "sections").childNodes:
-        section_id = get_text(get_element(section, "id", "anwv")).strip()
-        section_title = get_text(get_element(section, "title", "anwv")).strip()
-        if section_title and section_title.find("[untr]") < 0:
-          strings[locale][section_id + "Title"] = { "message": section_title }
-        for preference in get_element(section, "preferences").childNodes:
-          preference_name = get_text(get_element(preference, "name", "anwv")).strip()
-          get_descriptions(strings, links, locale, preference, preference_name)
+    for section in get_element(value.documentElement, "sections").childNodes:
+      section_id = get_text(get_element(section, "id", "anwv")).strip()
+      extract_string(strings[locale], section_id + "Title", section, "title", "anwv")
+      for preference in get_element(section, "preferences").childNodes:
+        preference_name = get_text(get_element(preference, "name", "anwv")).strip()
+        get_descriptions(strings, links, locale, preference, preference_name)
 
   process_body(descriptions, strings)
 
@@ -561,18 +553,14 @@ def process_subscriptionlist(path):
     tables[locale] = []
 
   for locale, value in data.iteritems():
-    title = get_text(get_element(value.documentElement, "title", "anwv")).strip()
-    if title and title.find("[untr]") < 0:
-      strings[locale]["title"] = {"message": title}
+    extract_string(strings[locale], "title", value.documentElement, "title", "anwv")
 
     headers[locale] = get_element(value.documentElement, "header", "anwv")
     footers[locale] = get_element(value.documentElement, "footer", "anwv")
 
     for subst in get_element(value.documentElement, "subst").childNodes:
-      subst_name = get_text(get_element(subst, "name").firstChild).strip()
-      subst_value = get_text(get_element(subst, "text").firstChild).strip()
-      if subst_name and subst_value and subst_value.find("[untr]") < 0:
-        strings[locale][subst_name] = { "message": subst_value }
+      subst_name = get_text(get_element(subst, "name", "anwv")).strip()
+      extract_string(strings[locale], subst_name, subst, "text", "anwv")
 
   # Prepare the header and footer
   process_body(footers, strings, process_body(headers, strings))
@@ -651,12 +639,9 @@ def process_menu():
     if os.path.exists(footer_format % locale):
       data = read_xml(footer_format % locale)
       for string, heading in itertools.izip(("resources", "community", "development", "follow-us"), data.getElementsByTagName("h1")):
-        text = get_text(heading).strip()
-        if text and text.find("[untr]") < 0:
-          menu[locale][string] = {"message": text}
+        extract_string(menu[locale], string, heading)
       for link in data.getElementsByTagName("a"):
         url = link.getAttribute("href").replace("/de/", "")
-        text = get_text(link).strip()
         if url == "/forum/viewforum.php?f=11":
           string = "_bugs"
         elif url.startswith("/"):
@@ -665,8 +650,7 @@ def process_menu():
           string = "roadmap"
         else:
           string = url
-        if text and text.find("[untr]") < 0:
-          menu[locale][string] = {"message": text}
+        extract_string(menu[locale], string, link)
   return menu
 
 if __name__ == "__main__":
