@@ -399,8 +399,8 @@ def process_interface(path):
     if method_version:
       interface[method_key]["version"] = method_version
 
-    # ... and sort them by their names
-    interface = OrderedDict(sorted(interface.iteritems(), key=lambda x: x[0].split("(")[0].strip().split()[-1]))
+  # ... and sort them by their names
+  interface = OrderedDict(sorted(interface.iteritems(), key=lambda x: x[0].split("(")[0].strip().split()[-1]))
 
   links = {}
 
