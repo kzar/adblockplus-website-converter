@@ -391,9 +391,10 @@ def process_interface(path):
       argument_string += " %s %s," % (argument_type, argument_name)
     argument_string = argument_string.strip().strip(",")
     method_key = "%s %s(%s)" % (method_return_type, method_name, argument_string)
-    interface[method_key] = {
-      "version": method_version
-    }
+    interface[method_key] = {}
+    if method_version:
+      interface[method_key]["version"] = method_version
+
     # ... and sort them by their names
     interface = OrderedDict(sorted(interface.iteritems(), key=lambda x: x[0].split("(")[0].strip().split()[-1]))
 
