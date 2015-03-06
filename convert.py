@@ -301,10 +301,6 @@ def process_page(path, menu):
   bodies = {}
   for locale, value in data.iteritems():
     bodies[locale] = get_element(value.documentElement, "body", "anwv")
-    if pagename == "index":
-      container = get_element(bodies[locale], "div")
-      container.setAttribute("id", "install-container")
-      container.setAttribute("class", "{{page}}")
   process_body(bodies, strings)
 
   body = xml_to_text(bodies["en"])
