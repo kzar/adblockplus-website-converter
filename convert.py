@@ -680,3 +680,8 @@ if __name__ == "__main__":
       del value["_bugs"]
     localefile = os.path.join(output_dir, "locales", locale, "menu.json")
     save_locale(localefile, value)
+
+  try:
+    os.remove(os.path.join(output_dir, "pages", "safari.raw"))
+  except OSError:
+    pass
