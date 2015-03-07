@@ -1,4 +1,6 @@
 #!/bin/bash
+wget https://adblockplus.org/favicon.ico -O ../wwwnew/static/favicon.ico
+
 wget https://adblockplus.org/_override-static/global/global/css/main-desktop.css -O ../wwwnew/static/css/main-desktop.css
 wget https://adblockplus.org/_override-static/global/global/css/features.css -O ../wwwnew/static/css/features.css
 wget https://adblockplus.org/_override-static/global/global/css/index-desktop.css -O ../wwwnew/static/css/index-desktop.css
@@ -23,3 +25,7 @@ wget https://adblockplus.org/_override-static/global/global/img/sprite-features.
 wget https://adblockplus.org/_override-static/global/global/img/sprite-contribute.png -O ../wwwnew/static/img/sprite-contribute.png
 wget https://adblockplus.org/_override-static/global/global/img/adblockplus_128.png -O ../wwwnew/static/img/adblockplus_128.png
 wget https://adblockplus.org/_override-static/global/global/img/maxthon-instruction.png -O ../wwwnew/static/img/maxthon-instruction.png
+
+wget https://adblockplus.org/_override-static/global/global/fonts/CreteRoundRegular.otf -O ../wwwnew/static/fonts/CreteRoundRegular.otf
+wget https://adblockplus.org/_override-static/global/global/fonts/SourceSansProBlack.woff -O ../wwwnew/static/fonts/SourceSansProBlack.woff
+wget https://adblockplus.org/_override-static/global/global/fonts/SourceSansProLight.woff -O ../wwwnew/static/fonts/SourceSansProLight.woff
