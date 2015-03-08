@@ -414,8 +414,14 @@ def process_interface(path):
 
   # Write general interface strings to the interface.json locale file
   localefile = os.path.join(output_dir, "locales", "en", "interface.json")
-  save_locale(localefile, { "general_notes": { "message": "General notes" },
-                            "toc_header": {"message": "Methods and properties" } })
+  save_locale(localefile, OrderedDict([
+    ("general_notes", { "message": "General notes" }),
+    ("toc_header", {"message": "Methods and properties" }),
+    ("minversion_label", {"message": "Version:" }),
+    ("minversion_addendum", {"message": "and higher" }),
+    ("arguments_label", {"message": "Arguments:" }),
+    ("returnvalue_label", {"message": "Returns:" })
+  ]))
 
   pagedata = ""
   for key, value in descriptions.iteritems():
