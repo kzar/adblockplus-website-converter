@@ -233,7 +233,7 @@ def raw_to_template(text):
   return text
 
 def move_meta_tags(head, body):
-  meta_tag_regexp = r"\s{0,1}<meta\b[^>]*>\s"
+  meta_tag_regexp = r"<meta\b[^>]*>\s?"
   head += "".join(re.findall(meta_tag_regexp, body, re.I + re.S))
   return head, re.sub(meta_tag_regexp, "", body)
 
