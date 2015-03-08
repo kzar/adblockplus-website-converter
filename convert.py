@@ -233,12 +233,9 @@ def raw_to_template(text):
   return text
 
 def move_meta_tags(head, body):
-  if not head:
-    return head, body
-  else:
-    meta_tag_regexp = r"\s{0,1}<meta\b[^>]*>\s"
-    head +=  "".join(re.findall(meta_tag_regexp, body, re.I + re.S))
-    return head, re.sub(meta_tag_regexp, "", body)
+  meta_tag_regexp = r"\s{0,1}<meta\b[^>]*>\s"
+  head += "".join(re.findall(meta_tag_regexp, body, re.I + re.S))
+  return head, re.sub(meta_tag_regexp, "", body)
 
 def process_page(path, menu):
   pagename = os.path.join(os.path.dirname(path), os.path.basename(path).replace("page!", ""))
@@ -283,8 +280,8 @@ def process_page(path, menu):
 
   body = xml_to_text(bodies["en"])
   head = xml_to_text(get_element(data["en"].documentElement, "head", "anwv"))
-  head, body = move_meta_tags(head, body)
   if head:
+    head, body = move_meta_tags(head, body)
     pagedata = "<head>%s</head>%s" % (h.unescape(head), body)
   else:
     pagedata = body
