@@ -406,8 +406,10 @@ def process_interface(path):
   for key in descriptions:
     process_body(descriptions[key], strings, key + "-" if key else "")
 
-  strings["en"]["general_notes"] = { "message": "General notes" }
-  strings["en"]["toc_header"] = {"message": "Methods and properties" }
+  # Write general interface strings to the interface.json locale file
+  localefile = os.path.join(output_dir, "locales", "en", "interface.json")
+  save_locale(localefile, { "general_notes": { "message": "General notes" },
+                            "toc_header": {"message": "Methods and properties" } })
 
   pagedata = ""
   for key, value in descriptions.iteritems():
@@ -433,7 +435,7 @@ def process_interface(path):
 {{ display_interface(%s) }}
 """ % (
     license_header,
-    '<h2>{{ "general_notes"|translate }}</h2>',
+    '<h2>{{ "general_notes"|translate("interface") }}</h2>',
     pagedata,
     re.sub(r'"\$(.*?)\$"', r'\1', json.dumps(interface, indent=2, separators=(',', ': ')))
   )
