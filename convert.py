@@ -280,8 +280,8 @@ def process_page(path, menu):
 
   body = xml_to_text(bodies["en"])
   head = xml_to_text(get_element(data["en"].documentElement, "head", "anwv"))
+  head, body = move_meta_tags(head, body)
   if head:
-    head, body = move_meta_tags(head, body)
     pagedata = "<head>%s</head>%s" % (h.unescape(head), body)
   else:
     pagedata = body
