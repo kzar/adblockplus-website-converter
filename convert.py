@@ -7,7 +7,7 @@ from xml.dom import minidom, Node
 
 h = HTMLParser.HTMLParser()
 
-output_dir = "../wwwnew"
+output_dir = "../web.adblockplus.org"
 input_dir = "../www"
 locales = ("ar", "bg", "de", "en", "es", "fr", "he", "hu", "ko", "lt", "nl",
            "pt_BR", "ru", "sk", "zh_CN", "zh_TW")
