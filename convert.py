@@ -109,6 +109,14 @@ def merge_children(nodes):
         len(node.childNodes) == 1 and
         node.firstChild.nodeType == Node.TEXT_NODE):
       return True
+    if (node.nodeType == Node.ELEMENT_NODE and
+        node.tagName == "a" and
+        not node.hasAttribute("href") and
+        len(node.childNodes) == 2 and
+        node.firstChild.nodeType == Node.ELEMENT_NODE and
+        node.firstChild.tagName == "attr" and
+        node.lastChild.nodeType == Node.TEXT_NODE):
+      return True
     return False
 
   def is_empty(node):
@@ -133,7 +141,8 @@ def merge_children(nodes):
             text = []
             links = []
             for child in parent.childNodes[start:end+1]:
-              if child.nodeType == Node.ELEMENT_NODE and child.tagName == "a" and child.hasAttribute("href"):
+              if child.nodeType == Node.ELEMENT_NODE and child.tagName == "a":
+                child = squash_attrs(child)
                 links.append(child.getAttribute("href"))
                 child.removeAttribute("href")
               text.append(child.toxml())
