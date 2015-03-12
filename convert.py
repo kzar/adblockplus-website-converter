@@ -30,6 +30,50 @@ license_header = """{#
  # along with Adblock Plus.  If not, see <http://www.gnu.org/licenses/>.
  #}"""
 
+class AttributeParser(HTMLParser.HTMLParser):
+  _string = None
+  _attrs = None
+
+  def __init__(self, whitelist):
+    self._whitelist = whitelist
+
+  def parse(self, text, pagename):
+    self.reset()
+    self._string = []
+    self._attrs = {}
+    self._pagename = pagename
+
+    try:
+      self.feed(text)
+      return "".join(self._string), self._attrs
+    finally:
+      self._string = None
+      self._attrs = None
+      self._pagename = None
+
+  def handle_starttag(self, tag, attrs):
+    if tag not in self._whitelist:
+      raise Exception("Unexpected HTML tag '%s' in localizable string on page %s" % (tag, self._pagename))
+    self._attrs.setdefault(tag, []).append(attrs)
+    self._string.append("<%s>" % tag)
+
+  def handle_endtag(self, tag):
+    self._string.append("</%s>" % tag)
+
+  def handle_data(self, data):
+    # Note: lack of escaping here is intentional. The result is a locale string,
+    # HTML escaping is applied when this string is inserted into the document.
+    self._string.append(data)
+
+  def handle_entityref(self, name):
+    self._string.append(self.unescape("&%s;" % name))
+
+  def handle_charref(self, name):
+    self._string.append(self.unescape("&#%s;" % name))
+
+tag_whitelist = set(["a", "strong", "em"])
+attribute_parser = AttributeParser(tag_whitelist)
+
 def ensure_dir(path):
   try:
     os.makedirs(os.path.dirname(path))
@@ -97,25 +141,8 @@ def merge_children(nodes):
     if node.nodeType == Node.TEXT_NODE:
       return True
     if (node.nodeType == Node.ELEMENT_NODE and
-        node.tagName in ("em", "strong") and
-        len(node.attributes) == 0 and
-        len(node.childNodes) == 1 and
-        node.firstChild.nodeType == Node.TEXT_NODE):
-      return True
-    if (node.nodeType == Node.ELEMENT_NODE and
-        node.tagName == "a" and
-        len(node.attributes) == 1 and
-        node.hasAttribute("href") and
-        len(node.childNodes) == 1 and
-        node.firstChild.nodeType == Node.TEXT_NODE):
-      return True
-    if (node.nodeType == Node.ELEMENT_NODE and
-        node.tagName == "a" and
-        not node.hasAttribute("href") and
-        len(node.childNodes) == 2 and
-        node.firstChild.nodeType == Node.ELEMENT_NODE and
-        node.firstChild.tagName == "attr" and
-        node.lastChild.nodeType == Node.TEXT_NODE):
+        node.tagName in tag_whitelist and
+        all(n.nodeType == Node.TEXT_NODE for n in node.childNodes)):
       return True
     return False
 
@@ -139,15 +166,9 @@ def merge_children(nodes):
         for locale, parent in nodes.iteritems():
           if end < len(parent.childNodes):
             text = []
-            links = []
             for child in parent.childNodes[start:end+1]:
-              if child.nodeType == Node.ELEMENT_NODE and child.tagName == "a":
-                child = squash_attrs(child)
-                links.append(child.getAttribute("href"))
-                child.removeAttribute("href")
               text.append(child.toxml())
             node = parent.ownerDocument.createTextNode("".join(text))
-            node.links = links
             parent.replaceChild(node, parent.childNodes[start])
             for child in parent.childNodes[start+1:end+1]:
               parent.removeChild(child)
@@ -171,10 +192,6 @@ def process_body(nodes, strings, prefix="", counter=1):
   elif nodes["en"].nodeType == Node.TEXT_NODE:
     message = nodes["en"].nodeValue.strip()
     if message:
-      if hasattr(nodes["en"], "links") and len(nodes["en"].links):
-        links = "(%s)" % ", ".join(nodes["en"].links)
-      else:
-        links = ""
       # If an identical string has been stored on this page reuse it
       string_key = prefix + "s%i" % counter
       if len(message) >= 8:
@@ -184,11 +201,14 @@ def process_body(nodes, strings, prefix="", counter=1):
 
       for locale, value in nodes.iteritems():
         text = value.nodeValue or ""
+        text = re.sub(r'\s+--(?!>)', u'\u00A0\u2014', text)
         pre, text, post = re.search(r"^(\s*)(.*?)(\s*)$", text, re.S).groups()
-        if string_key == prefix + "s%i" % counter and text and text.find("[untr]") < 0:
+        if string_key == prefix + "s%i" % counter and text and "[untr]" not in text:
           text = re.sub("\n\s+", " ", text, flags=re.S)
-          strings[locale][string_key] = {"message": re.sub(r'\s+--(?!>)', u'\u00A0\u2014', h.unescape(text))}
-        value.nodeValue = "%s$%s%s$%s" % (pre, string_key, links, post)
+          if locale != "en":
+            text, _ = attribute_parser.parse(text, "")
+            strings[locale][string_key] = {"message": text}
+        value.nodeValue = "%s{{%s %s}}%s" % (pre, string_key, message, post)
       counter += 1
   elif nodes["en"].nodeType == Node.COMMENT_NODE:
     pass
@@ -198,7 +218,13 @@ def process_body(nodes, strings, prefix="", counter=1):
   return counter
 
 def xml_to_text(xml):
-  result = re.sub(r"</?anwv/?>", "", xml.toxml())
+  def unescape(match):
+    return '{{%s %s}}' % (match.group(1), h.unescape(match.group(2)))
+
+  result = xml.toxml()
+  result = re.sub(r"\{\{([\w\-]+)\s+(.*?)\}\}", unescape, result, flags=re.S)
+
+  result = re.sub(r"</?anwv/?>", "", result)
   result = result.replace("/_override-static/global/global", "")
   result = re.sub(r"</?fix/?>", "", result, flags=re.S)
 
@@ -225,12 +251,12 @@ def xml_to_text(xml):
   return result
 
 def raw_to_template(text):
-  def translate_tag(match):
-    return r'{{"%s"|translate(links=[%s])}}' % (match.group(1), '"%s"' % '", "'.join(match.group(2).split(", ")))
+  def escape_string(s):
+    return s.replace("\\", "\\\\").replace('"', '\\"').replace("\r", "\\r").replace("\n", "\\n")
+  def convert(match):
+    return '{{"%s"|translate("%s")}}' % (escape_string(h.unescape(match.group(2))), match.group(1))
 
-  text = re.sub(r"\$([\w\-]+)\$", r'{{"\1"|translate}}', text)
-  text = re.sub(r"\$([\w\-]+)\((.*?)\)\$", lambda match: translate_tag(match), text)
-  return text
+  return re.sub(r"\{\{([\w\-]+)\s+(.*?)\}\}", convert, text, flags=re.S)
 
 def move_meta_tags(head, body):
   meta_tag_regexp = r"<meta\b[^>]*>\s?"
@@ -257,21 +283,8 @@ def process_page(path, menu):
   for locale, value in data.iteritems():
     extract_string(strings[locale], "title", value.documentElement, "title", "anwv")
 
-  titlestring = "title"
-  if pagename in menu["en"]:
-    if menu["en"][pagename]["message"] != strings["en"]["title"]["message"]:
-      titlestring = "title-full"
-      for locale in locales:
-        if locale in strings and "title" in strings[locale]:
-          title = strings[locale]["title"]
-          if locale in menu and pagename in menu[locale]:
-            strings[locale]["title"] = menu[locale][pagename]
-          else:
-            del strings[locale]["title"]
-          strings[locale]["title-full"] = title
-    for locale in locales:
-      if locale in menu and pagename in locale:
-        del menu[locale][pagename]
+  variables = ["title=%s" % strings["en"]["title"]["message"]]
+  del strings["en"]["title"]
 
   bodies = {}
   for locale, value in data.iteritems():
@@ -287,11 +300,14 @@ def process_page(path, menu):
     pagedata = body
 
   if pagename == "index":
-    pagedata = "noheading=True\nlocalefile=index\n\n%s\n\n%s" % (license_header, raw_to_template(pagedata))
+    pagedata = raw_to_template(pagedata)
+    pagedata = license_header + "\n\n" + pagedata
+    variables.append("noheading=True")
+    variables.append("localefile=index")
   elif pagename in ("acceptable-ads-manifesto", "share", "customize-youtube", "customize-facebook"):
-    pagedata = "template=minimal\n\n%s" % pagedata
-  elif titlestring != "title":
-    pagedata = "title=%s\n\n%s" % (titlestring, pagedata)
+    variables.append("template=minimal")
+
+  pagedata = "\n".join(variables) + "\n\n" + pagedata
 
   if pagename == "index":
     target = os.path.join(output_dir, "includes", pagename + ".tmpl")
@@ -432,7 +448,9 @@ def process_interface(path):
       pagedata += "{% endmacro %}\n"
     pagedata += "\n"
 
-  pagedata = """%s
+  pagedata = """title=%s
+
+%s
 
 %s
 
@@ -446,11 +464,13 @@ def process_interface(path):
 
 {{ display_interface(%s) }}
 """ % (
+    strings["en"]["title"]["message"],
     license_header,
-    '<h2>{{ "general_notes"|translate("interface") }}</h2>',
+    '<h2>{{ get_string("general_notes", "interface") }}</h2>',
     pagedata,
-    re.sub(r'"\$(.*?)\$"', r'\1', json.dumps(interface, indent=2, separators=(',', ': ')))
+    re.sub(r'"\$.*?\$"', lambda match: json.loads(match.group(0))[1:-1], json.dumps(interface, indent=2, separators=(',', ': ')))
   )
+  del strings["en"]["title"]
 
   # Save the page's HTML
   target = os.path.join(output_dir, "pages", pagename + ".tmpl")
@@ -485,7 +505,8 @@ def process_preftable(path):
   for section in get_element(data["en"].documentElement, "sections").childNodes:
     section_id = get_text(get_element(section, "id", "anwv")).strip()
     new_section = OrderedDict(id=section_id)
-    new_section["title"] = "$'%sTitle'|translate$" % section_id
+    title = get_text(get_element(section, "title", "anwv")).strip()
+    new_section["title"] = "$'%s'|translate('%sTitle')$" % (title.replace("'", "\\'"), section_id)
     new_section["preferences"] = []
 
     for preference in get_element(section, "preferences").childNodes:
@@ -510,20 +531,22 @@ def process_preftable(path):
 
     set_description("", get_element(value.documentElement, "description", "anwv"))
 
-    extract_string(strings[locale], "prefnamecol", value.documentElement, "prefnamecol", "anwv")
-    extract_string(strings[locale], "defaultcol", value.documentElement, "defaultcol", "anwv")
-    extract_string(strings[locale], "descriptioncol", value.documentElement, "descriptioncol", "anwv")
+    if locale != "en":
+      extract_string(strings[locale], "prefnamecol", value.documentElement, "prefnamecol", "anwv")
+      extract_string(strings[locale], "defaultcol", value.documentElement, "defaultcol", "anwv")
+      extract_string(strings[locale], "descriptioncol", value.documentElement, "descriptioncol", "anwv")
 
     for section in get_element(value.documentElement, "sections").childNodes:
       section_id = get_text(get_element(section, "id", "anwv")).strip()
-      extract_string(strings[locale], section_id + "Title", section, "title", "anwv")
+      if locale != "en":
+        extract_string(strings[locale], section_id + "Title", section, "title", "anwv")
       for preference in get_element(section, "preferences").childNodes:
         preference_name = get_text(get_element(preference, "name", "anwv")).strip()
         set_description(preference_name, get_element(preference, "description", "anwv"))
 
   # Translate the strings in the descriptions
   for key in descriptions:
-    process_body(descriptions[key], strings, key + "-" if key else "")
+    process_body(descriptions[key], strings, re.sub(r'\W', '', key) + "-" if key else "")
 
   pagedata = ""
   for key, value in descriptions.iteritems():
@@ -534,7 +557,9 @@ def process_preftable(path):
       pagedata += "{% endmacro %}\n"
     pagedata += "\n"
 
-  pagedata = """%s
+  pagedata = """title=%s
+
+%s
 
 %s
 {#
@@ -546,10 +571,12 @@ def process_preftable(path):
 
 {{ display_preftable(%s) }}
 """ % (
+    strings["en"]["title"]["message"],
     license_header,
     pagedata,
-    re.sub(r'"\$(.*?)\$"', r'\1', json.dumps(sections, indent=2, separators=(',', ': ')))
+    re.sub(r'"\$.*?\$"', lambda match: json.loads(match.group(0))[1:-1], json.dumps(sections, indent=2, separators=(',', ': ')))
   )
+  del strings["en"]["title"]
 
   # Save the page's HTML
   target = os.path.join(output_dir, "pages", pagename + ".tmpl")
@@ -588,19 +615,28 @@ def process_subscriptionlist(path):
 
     for subst in get_element(value.documentElement, "subst").childNodes:
       subst_name = get_text(get_element(subst, "name", "anwv")).strip()
-      extract_string(strings[locale], subst_name, subst, "text", "anwv")
+      if subst_name.startswith("type_") or locale != "en":
+        extract_string(strings[locale], subst_name, subst, "text", "anwv")
 
   # Prepare the header and footer
   process_body(footers, strings, counter=process_body(headers, strings))
 
-  strings["en"]["maintainer_suffix"] = {"message": ""}
-  strings["en"]["supplements_suffix"] = {"message": ""}
+  pagedata = ("""title=%s
+%s
 
-  pagedata = ("%s\n\n%s\n\n{%% from \"includes/subscriptionList\" import display_subscriptions %%}\n{{ display_subscriptions(1|get_subscriptions) }}\n\n%s") % (
+%s
+
+{%% from "includes/subscriptionList" import display_subscriptions %%}
+
+{{ display_subscriptions(1|get_subscriptions) }}
+
+%s""") % (
+    strings["en"]["title"]["message"],
     license_header,
     raw_to_template(xml_to_text(headers["en"])),
     raw_to_template(xml_to_text(footers["en"]))
   )
+  del strings["en"]["title"]
 
   # Save the page's HTML
   target = os.path.join(output_dir, "pages", pagename + ".tmpl")
