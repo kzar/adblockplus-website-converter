@@ -312,7 +312,7 @@ def process_page(path, menu):
   if pagename == "index":
     target = os.path.join(output_dir, "includes", pagename + ".tmpl")
   else:
-    target = os.path.join(output_dir, "pages", pagename + ".raw")
+    target = os.path.join(output_dir, "pages", pagename + ".html")
   ensure_dir(target)
   with codecs.open(target, "wb", encoding="utf-8") as handle:
     handle.write(pagedata)
