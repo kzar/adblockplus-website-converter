@@ -192,9 +192,10 @@ def process_body(nodes, strings, prefix="", counter=1):
   elif nodes["en"].nodeType == Node.TEXT_NODE:
     message = nodes["en"].nodeValue.strip()
     if message:
-      # If an identical string has been stored on this page reuse it
       message = re.sub(r'\s+--(?!>)', u'\u00A0\u2014', message)
       string_key = prefix + "s%i" % counter
+
+      # If there's an identical string on the page we can reuse its translations
       if len(message) >= 8:
         items = filter(lambda (k, v): v["message"] == message, strings["en"].iteritems())
         if items:
