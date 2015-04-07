@@ -253,12 +253,24 @@ def xml_to_text(xml):
   return result
 
 def raw_to_template(text):
+  # {{s1 Hello World}} => {{"Hello World"|translate("s1")}}
   def escape_string(s):
     return s.replace("\\", "\\\\").replace('"', '\\"').replace("\r", "\\r").replace("\n", "\\n")
-  def convert(match):
+  def convert_translatable_strings(match):
     return '{{"%s"|translate("%s")}}' % (escape_string(h.unescape(match.group(2))), match.group(1))
+  text = re.sub(r"\{\{([\w\-]+)\s+(.*?)\}\}", convert_translatable_strings, text, flags=re.S)
 
-  return re.sub(r"\{\{([\w\-]+)\s+(.*?)\}\}", convert, text, flags=re.S)
+  # <anwtoc page="en/android-faq" titletag="h2"></anwtoc> => {{toc("android-faq", "h2")}}
+  def convert_toc(match):
+    params = '", "'.join([m for m in match.groups() if not m is None])
+    return '{{toc("%s")}}' % params
+  text = re.sub(
+    r'<anwtoc page="\w+/([\w-]+)"(?: titletag="([\w]+)")?></anwtoc>',
+    convert_toc,
+    text
+  )
+
+  return text
 
 def move_meta_tags(head, body):
   meta_tag_regexp = r"<meta\b[^>]*>\s?"
@@ -301,11 +313,16 @@ def process_page(path, menu):
   else:
     pagedata = body
 
+  contains_toc = "<anwtoc" in pagedata
+
   if pagename == "index":
-    pagedata = raw_to_template(pagedata)
-    pagedata = license_header + "\n\n" + pagedata
+    pagedata = license_header + "\n\n" + raw_to_template(pagedata)
     variables.append("noheading=True")
     variables.append("localefile=index")
+  elif contains_toc:
+    pagedata = raw_to_template(pagedata)
+    pagedata = (license_header + '\n\n{% from "includes/toc" import toc %}\n\n' +
+                raw_to_template(pagedata))
   elif pagename in ("acceptable-ads-manifesto", "share", "customize-youtube", "customize-facebook"):
     variables.append("template=minimal")
 
@@ -313,6 +330,8 @@ def process_page(path, menu):
 
   if pagename == "index":
     target = os.path.join(output_dir, "includes", pagename + ".tmpl")
+  elif contains_toc:
+    target = os.path.join(output_dir, "pages", pagename + ".tmpl")
   else:
     target = os.path.join(output_dir, "pages", pagename + ".html")
   ensure_dir(target)
