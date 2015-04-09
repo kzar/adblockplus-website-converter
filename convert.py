@@ -651,6 +651,31 @@ def process_subscriptionlist(path):
       localefile = os.path.join(output_dir, "locales", locale, pagename + ".json")
       save_locale(localefile, value)
 
+def process_animation(path):
+  animation_name = os.path.basename(path).replace("animation!anim_", "").replace(".xml", "")
+  animation_xml = read_xml(path)
+
+  width = get_text(get_element(animation_xml.documentElement, "width", "anwv")).strip()
+  height = get_text(get_element(animation_xml.documentElement, "height", "anwv")).strip()
+  animation_data = get_element(animation_xml.documentElement, "data", "anwv")
+
+  animation_data.tagName = "animation"
+  animation_data.setAttribute("xmlns", "https://adblockplus.org/animation")
+  animation_data.setAttribute("width", width)
+  animation_data.setAttribute("height", height)
+
+  for child in animation_data.childNodes:
+    if (child.nodeType == Node.ELEMENT_NODE and
+        child.tagName == "object" and
+        child.hasAttribute("src")):
+      child.setAttribute("src", "{{'%s'|localise_path|inline_image}}" % child.getAttribute("src"))
+
+  page_data = "template=raw\n\n" + xml_to_text(animation_data)
+  target = os.path.join(output_dir, "pages", "animations", os.path.dirname(path).replace("_include", ""),
+                        animation_name + ".xml.tmpl")
+  with codecs.open(target, "wb", encoding="utf-8") as handle:
+    handle.write(page_data)
+
 def process_file(path, menu):
   if os.path.basename(path) in ("page!footer", "page!internet-explorer", "page!contribute-old"):
     return
@@ -665,6 +690,8 @@ def process_file(path, menu):
     process_preftable(path)
   elif os.path.basename(path).startswith("subscriptionlist!"):
     process_subscriptionlist(path)
+  elif os.path.basename(path).startswith("animation!"):
+    process_animation(path)
   else:
     print >>sys.stderr, "Ignoring file %s" % path
 
@@ -725,6 +752,7 @@ if __name__ == "__main__":
   process("page!en", menu)
   process("en", menu)
   process("images", menu)
+  process("_include", menu)
 
   for locale, value in menu.iteritems():
     if "_bugs" in value:
