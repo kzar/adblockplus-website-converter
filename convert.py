@@ -668,7 +668,7 @@ def process_animation(path):
     if (child.nodeType == Node.ELEMENT_NODE and
         child.tagName == "object" and
         child.hasAttribute("src")):
-      child.setAttribute("src", "{{'%s'|localise_path|inline_image}}" % child.getAttribute("src"))
+      child.setAttribute("src", "{{'%s'|localise_path(locale)|inline_image}}" % child.getAttribute("src"))
 
   page_data = "template=raw\n\n" + xml_to_text(animation_data)
   target = os.path.join(output_dir, "pages", "animations", os.path.dirname(path).replace("_include", ""),
