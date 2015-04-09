@@ -29,5 +29,3 @@ wget -q https://adblockplus.org/_override-static/global/global/img/maxthon-instr
 wget -q https://adblockplus.org/_override-static/global/global/fonts/CreteRoundRegular.otf -O ../web.adblockplus.org/static/fonts/CreteRoundRegular.otf
 wget -q https://adblockplus.org/_override-static/global/global/fonts/SourceSansProBlack.woff -O ../web.adblockplus.org/static/fonts/SourceSansProBlack.woff
 wget -q https://adblockplus.org/_override-static/global/global/fonts/SourceSansProLight.woff -O ../web.adblockplus.org/static/fonts/SourceSansProLight.woff
-
-wget -q https://adblockplus.org/animation.js -O ../web.adblockplus.org/static/js/animation.js
