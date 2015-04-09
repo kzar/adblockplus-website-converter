@@ -296,6 +296,10 @@ def process_page(path, menu):
   body = xml_to_text(bodies["en"])
   head = xml_to_text(get_element(data["en"].documentElement, "head", "anwv"))
   head, body = move_meta_tags(head, body)
+
+  if "<animation" in body and not "animation.js" in head:
+    head += "\n<script src='/js/animation.js'></script>"
+
   if head:
     pagedata = "<head>%s</head>%s" % (h.unescape(head), body)
   else:
