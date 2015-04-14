@@ -676,6 +676,7 @@ def process_animation(path):
 
   page_data = "template=raw\n\n" + xml_to_text(animation_data)
   target = os.path.join(output_dir, "pages", "animations", animation_name + ".xml.tmpl")
+  ensure_dir(target)
   with codecs.open(target, "wb", encoding="utf-8") as handle:
     handle.write(page_data)
 
