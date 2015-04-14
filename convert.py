@@ -674,7 +674,7 @@ def process_animation(path):
         child.hasAttribute("src")):
       child.setAttribute("src", "{{'%s'|inline_file}}" % child.getAttribute("src"))
 
-  page_data = "template=raw\n\n" + xml_to_text(animation_data)
+  page_data = "template=raw\n\n" + xml_to_text(animation_data) + "\n"
   target = os.path.join(output_dir, "pages", "animations", animation_name + ".xml.tmpl")
   ensure_dir(target)
   with codecs.open(target, "wb", encoding="utf-8") as handle:
