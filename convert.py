@@ -312,8 +312,9 @@ def process_page(path, menu):
   if "<animation" in body and not "animation.js" in head:
     head += "\n<script src='/js/animation.js'></script>"
 
-  head = re.sub(r'src="/((?:deregifier|redundancyCheck|webtools)\.js)"', r'src="/js/\1"', head)
+  head = re.sub(r'(src="/)((?:deregifier|redundancyCheck|webtools)\.js")', r'\1js/\2', head)
   head = re.sub(r'src="/FilterClasses.jsm"', r'src="/js/filterClasses.js"', head)
+  head = re.sub(r'(url\(&quot;/)((?:facebook|twitter|googleplus)\.png&quot;\))', r'\1img/\2', head)
 
   if head:
     pagedata = "<head>%s</head>%s" % (h.unescape(head), body)
