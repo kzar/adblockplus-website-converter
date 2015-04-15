@@ -151,6 +151,9 @@ def merge_children(nodes):
 
   i = 0
   en = nodes["en"]
+  if all(is_empty(n) or not is_text(n) or (n.nodeType == Node.ELEMENT_NODE and n.tagName == "a") for n in en.childNodes):
+    return
+
   start = None
   for i in range(len(en.childNodes) + 1):
     if start == None:
