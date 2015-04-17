@@ -733,7 +733,7 @@ def process_animation(path):
     handle.write(page_data)
 
 def process_file(path, menu):
-  if os.path.basename(path) in ("page!footer", "page!internet-explorer", "page!contribute-old"):
+  if os.path.basename(path) in ("page!footer", "page!internet-explorer"):
     return
 
   if os.path.basename(path).startswith("page!"):
