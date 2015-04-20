@@ -273,32 +273,6 @@ def raw_to_template(text):
     text
   )
 
-  # <a href="foo" class="bar" title="{{"asdf"|translate("s12")}}"> => {{"foo"|linkify(class="bar", title="asdf"|translate("s12"))}}
-  def convert_link(match):
-    def escape_link_attr(value):
-      if value.startswith("{{") and value.endswith("}}"):
-        return value[2:-2]
-      else:
-        return '"%s"' % escape_string(value)
-
-    match = match.group(0)
-    if not match.startswith("<"):
-      return match
-    source = re.sub(r'{{.*?}}', lambda m: m.group(0).replace('"', '&quot;'), match) + "</a>"
-    attributes = dict(minidom.parseString(source).documentElement.attributes.items())
-    href = attributes.get("href")
-    if href and not href.startswith(("/", "#")) and ":" not in href:
-      params = ['%s=%s' % (name, escape_link_attr(value)) for name, value in sorted(attributes.iteritems()) if name != "href"]
-      params = "(%s)" % ", ".join(params) if params else ""
-      return '{{%s|linkify%s}}' % (escape_link_attr(href), params)
-    else:
-      return match
-  text = re.sub(
-    r'{{.*?}}|<a .*?>',
-    convert_link,
-    text
-  )
-
   return text
 
 def move_meta_tags(head, body):
