@@ -141,7 +141,7 @@ def squash_attrs(nodes, trans_attrs):
     new_nodes = {}
     for locale, node in nodes.iteritems():
       if node.childNodes[i].nodeType == Node.ELEMENT_NODE:
-        if node.tagName in tag_whitelist and node.childNodes[i].tagName == "attr":
+        if node.childNodes[i].tagName == "attr":
           name = node.childNodes[i].getAttribute("name")
           val = get_text(node.childNodes[i])
           if locale == "en":
@@ -211,6 +211,19 @@ def process_body(nodes, strings, prefix="", counter=1, trans_attrs=None):
   if nodes["en"].nodeType == Node.ELEMENT_NODE:
     if nodes["en"].tagName not in ("style", "script", "fix", "pre"):
       merge_children(nodes)
+      # Handle translatable attributes that are outside of a translatable string
+      for key in nodes["en"].attributes.keys():
+        attr_val = nodes["en"].getAttribute(key)
+        if attr_val.startswith("{{!"):
+          string_key = prefix + "s%i" % counter
+          nodes["en"].setAttribute(key, attr_val.replace("{{!", "{{" + string_key))
+          for locale in trans_attrs.keys():
+            if locale != "en":
+              s = trans_attrs[locale].pop(0)
+              if not "[untr]" in s:
+                strings[locale][string_key] = {"message": s}
+          counter += 1
+      # Recursively process child nodes
       for i in range(len(nodes["en"].childNodes)):
         new_nodes = {}
         for locale, value in nodes.iteritems():
