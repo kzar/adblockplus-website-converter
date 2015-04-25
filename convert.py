@@ -144,11 +144,10 @@ def squash_attrs(nodes, trans_attrs):
         if node.childNodes[i].tagName == "attr":
           name = node.childNodes[i].getAttribute("name")
           val = get_text(node.childNodes[i])
+          trans_attrs.setdefault(locale, []).append(val)
           if locale == "en":
             node.setAttribute(name, "{{! " + val + "}}")
             children_to_remove.append(i)
-          else:
-            trans_attrs.setdefault(locale, []).append(val)
         else:
           new_nodes[locale] = node.childNodes[i]
     if new_nodes:
@@ -203,6 +202,13 @@ def merge_children(nodes):
         i -= end - start
       start = None
 
+def existing_string_key(message, strings):
+  # If there's an identical string on the page we can reuse its translations
+  if len(message) >= 8:
+    items = filter(lambda (k, v): v["message"] == message, strings["en"].iteritems())
+    if items:
+      return items[0][0]
+
 def process_body(nodes, strings, prefix="", counter=1, trans_attrs=None):
   if trans_attrs is None:
     trans_attrs = {}
@@ -215,13 +221,12 @@ def process_body(nodes, strings, prefix="", counter=1, trans_attrs=None):
       for key in nodes["en"].attributes.keys():
         attr_val = nodes["en"].getAttribute(key)
         if attr_val.startswith("{{!"):
-          string_key = prefix + "s%i" % counter
+          string_key = existing_string_key(attr_val[3:-2], strings) or (prefix + "s%i" % counter)
           nodes["en"].setAttribute(key, attr_val.replace("{{!", "{{" + string_key))
           for locale in trans_attrs.keys():
-            if locale != "en":
-              s = trans_attrs[locale].pop(0)
-              if s and "[untr]" not in s:
-                strings[locale][string_key] = {"message": s}
+            s = trans_attrs[locale].pop(0)
+            if s and "[untr]" not in s:
+              strings[locale][string_key] = {"message": s}
           counter += 1
       # Recursively process child nodes
       for i in range(len(nodes["en"].childNodes)):
@@ -234,22 +239,16 @@ def process_body(nodes, strings, prefix="", counter=1, trans_attrs=None):
     message = nodes["en"].nodeValue.strip()
     if message:
       message = re.sub(r'\s+--(?!>)', u'\u00A0\u2014', message)
-      string_key = prefix + "s%i" % counter
-
-      # If there's an identical string on the page we can reuse its translations
-      if len(message) >= 8:
-        items = filter(lambda (k, v): v["message"] == message, strings["en"].iteritems())
-        if items:
-          string_key = items[0][0]
+      string_key = existing_string_key(message, strings) or (prefix + "s%i" % counter)
 
       for locale, value in nodes.iteritems():
         text = value.nodeValue or ""
         text = re.sub(r'\s+--(?!>)', u'\u00A0\u2014', text)
         pre, text, post = re.search(r"^(\s*)(.*?)(\s*)$", text, re.S).groups()
-        if string_key == prefix + "s%i" % counter and text and "[untr]" not in text:
+        if text and "[untr]" not in text:
           text = re.sub("\n\s+", " ", text, flags=re.S)
           text, trans_attr_keys = attribute_parser.parse(text, string_key)
-          if locale != "en":
+          if string_key == prefix + "s%i" % counter:
             strings[locale][string_key] = {"message": text}
         if locale == "en":
           for key in trans_attr_keys:
