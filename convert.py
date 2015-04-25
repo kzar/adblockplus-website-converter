@@ -220,7 +220,7 @@ def process_body(nodes, strings, prefix="", counter=1, trans_attrs=None):
           for locale in trans_attrs.keys():
             if locale != "en":
               s = trans_attrs[locale].pop(0)
-              if not "[untr]" in s:
+              if s and "[untr]" not in s:
                 strings[locale][string_key] = {"message": s}
           counter += 1
       # Recursively process child nodes
@@ -251,14 +251,14 @@ def process_body(nodes, strings, prefix="", counter=1, trans_attrs=None):
           text, trans_attr_keys = attribute_parser.parse(text, string_key)
           if locale != "en":
             strings[locale][string_key] = {"message": text}
-          else:
-            for key in trans_attr_keys:
-              message = message.replace("{{!", "{{" + key, 1)
-              for locale in nodes.iterkeys():
-                if locale != "en":
-                  s = trans_attrs[locale].pop(0)
-                  if not "[untr]" in s:
-                    strings[locale][key] = {"message": s}
+        if locale == "en":
+          for key in trans_attr_keys:
+            message = message.replace("{{!", "{{" + key, 1)
+            for locale in nodes.iterkeys():
+              if locale != "en":
+                s = trans_attrs[locale].pop(0)
+                if s and "[untr]" not in s:
+                  strings[locale][key] = {"message": s}
         value.nodeValue = "%s{{%s %s}}%s" % (pre, string_key, message, post)
       counter += 1
   elif nodes["en"].nodeType == Node.COMMENT_NODE:
