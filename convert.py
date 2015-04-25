@@ -32,29 +32,36 @@ license_header = """{#
 
 class AttributeParser(HTMLParser.HTMLParser):
   _string = None
-  _attrs = None
+  _trans_attr_keys = None
+  _attr_counts = None
 
   def __init__(self, whitelist):
     self._whitelist = whitelist
 
-  def parse(self, text, pagename):
+  def parse(self, text, string_key):
     self.reset()
     self._string = []
-    self._attrs = {}
-    self._pagename = pagename
+    self._attr_counts = {}
+    self._trans_attr_keys = []
+    self._string_key = string_key
 
     try:
       self.feed(text)
-      return "".join(self._string), self._attrs
+      return "".join(self._string), self._trans_attr_keys
     finally:
       self._string = None
-      self._attrs = None
-      self._pagename = None
+      self._trans_attr_keys = None
+      self._attr_counts = None
+      self._string_key = None
 
   def handle_starttag(self, tag, attrs):
     if tag not in self._whitelist:
-      raise Exception("Unexpected HTML tag '%s' in localizable string on page %s" % (tag, self._pagename))
-    self._attrs.setdefault(tag, []).append(attrs)
+      raise Exception("Unexpected HTML tag '%s' in localizable string %s" % (tag, self._string_key))
+    for (k, v) in attrs:
+      if v.startswith("{{!"):
+        count = self._attr_counts.get(k, 1)
+        self._trans_attr_keys.append("%s-%s-%d" % (self._string_key, k, count))
+        self._attr_counts[k] = count + 1
     self._string.append("<%s>" % tag)
 
   def handle_endtag(self, tag):
@@ -128,13 +135,28 @@ def extract_string(strings, property, *element_selector):
   if text and "[untr]" not in text:
     strings[property] = {"message": text}
 
-def squash_attrs(node):
-  if node.nodeType == Node.ELEMENT_NODE:
-    for child in list(node.childNodes):
-      if child.nodeType == Node.ELEMENT_NODE and child.tagName == "attr":
-        node.setAttribute(child.getAttribute("name"), get_text(child))
-        node.removeChild(child)
-  return node
+def squash_attrs(nodes, trans_attrs):
+  children_to_remove = []
+  for i in range(len(nodes["en"].childNodes)):
+    new_nodes = {}
+    for locale, node in nodes.iteritems():
+      if node.childNodes[i].nodeType == Node.ELEMENT_NODE:
+        if node.tagName in tag_whitelist and node.childNodes[i].tagName == "attr":
+          name = node.childNodes[i].getAttribute("name")
+          val = get_text(node.childNodes[i])
+          if locale == "en":
+            node.setAttribute(name, "{{! " + val + "}}")
+            children_to_remove.append(i)
+          else:
+            trans_attrs.setdefault(locale, []).append(val)
+        else:
+          new_nodes[locale] = node.childNodes[i]
+    if new_nodes:
+      squash_attrs(new_nodes, trans_attrs)
+
+  for i in reversed(children_to_remove):
+    for locale, node in nodes.iteritems():
+      node.removeChild(node.childNodes[i])
 
 def merge_children(nodes):
   def is_text(node):
@@ -181,7 +203,11 @@ def merge_children(nodes):
         i -= end - start
       start = None
 
-def process_body(nodes, strings, prefix="", counter=1):
+def process_body(nodes, strings, prefix="", counter=1, trans_attrs=None):
+  if trans_attrs is None:
+    trans_attrs = {}
+    squash_attrs(nodes, trans_attrs)
+
   if nodes["en"].nodeType == Node.ELEMENT_NODE:
     if nodes["en"].tagName not in ("style", "script", "fix", "pre"):
       merge_children(nodes)
@@ -190,8 +216,7 @@ def process_body(nodes, strings, prefix="", counter=1):
         for locale, value in nodes.iteritems():
           if len(value.childNodes) > i:
             new_nodes[locale] = value.childNodes[i]
-        counter = process_body(new_nodes, strings, prefix, counter)
-    squash_attrs(nodes["en"])
+        counter = process_body(new_nodes, strings, prefix, counter, trans_attrs)
   elif nodes["en"].nodeType == Node.TEXT_NODE:
     message = nodes["en"].nodeValue.strip()
     if message:
@@ -210,9 +235,17 @@ def process_body(nodes, strings, prefix="", counter=1):
         pre, text, post = re.search(r"^(\s*)(.*?)(\s*)$", text, re.S).groups()
         if string_key == prefix + "s%i" % counter and text and "[untr]" not in text:
           text = re.sub("\n\s+", " ", text, flags=re.S)
+          text, trans_attr_keys = attribute_parser.parse(text, string_key)
           if locale != "en":
-            text, _ = attribute_parser.parse(text, "")
             strings[locale][string_key] = {"message": text}
+          else:
+            for key in trans_attr_keys:
+              message = message.replace("{{!", "{{" + key, 1)
+              for locale in nodes.iterkeys():
+                if locale != "en":
+                  s = trans_attrs[locale].pop(0)
+                  if not "[untr]" in s:
+                    strings[locale][key] = {"message": s}
         value.nodeValue = "%s{{%s %s}}%s" % (pre, string_key, message, post)
       counter += 1
   elif nodes["en"].nodeType == Node.COMMENT_NODE:
@@ -224,10 +257,19 @@ def process_body(nodes, strings, prefix="", counter=1):
 
 def xml_to_text(xml):
   def unescape(match):
-    return '{{%s %s}}' % (match.group(1), h.unescape(match.group(2)))
+    return '{{%s %s}}' % (match.group(1), h.unescape(match.group(3)))
 
   result = xml.toxml()
-  result = re.sub(r"\{\{([\w\-]+)\s+(.*?)\}\}", unescape, result, flags=re.S)
+  result = re.sub(
+    r"{{\s*"
+    r"([\w\-]+)" # String ID
+    r"(?:\[(.*?)\])?" # Optional comment
+    r"\s+"
+    r"((?:(?!{{).|" # Translatable text
+      r"{{(?:(?!}}).)*}}" # Nested translation
+    r")*?)"
+    r"}}",
+    unescape, result, flags=re.S)
 
   result = re.sub(r"</?anwv/?>", "", result)
   result = result.replace("/_override-static/global/global", "")
