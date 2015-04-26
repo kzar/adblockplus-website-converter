@@ -254,10 +254,9 @@ def process_body(nodes, strings, prefix="", counter=1, trans_attrs=None):
           for key in trans_attr_keys:
             message = message.replace("{{!", "{{" + key, 1)
             for locale in nodes.iterkeys():
-              if locale != "en":
-                s = trans_attrs[locale].pop(0)
-                if s and "[untr]" not in s:
-                  strings[locale][key] = {"message": s}
+              s = trans_attrs[locale].pop(0)
+              if s and "[untr]" not in s:
+                strings[locale][key] = {"message": s}
         value.nodeValue = "%s{{%s %s}}%s" % (pre, string_key, message, post)
       counter += 1
   elif nodes["en"].nodeType == Node.COMMENT_NODE:
@@ -404,7 +403,7 @@ def process_page(path, menu):
     handle.write(pagedata)
 
   for locale, value in strings.iteritems():
-    if value:
+    if locale != "en" and value:
       localefile = os.path.join(output_dir, "locales", locale, pagename + ".json")
       save_locale(localefile, value)
 
@@ -565,7 +564,7 @@ def process_interface(path):
     handle.write(pagedata)
   # Save all the translations of strings for the page
   for locale, value in strings.iteritems():
-    if value:
+    if locale != "en" and value:
       localefile = os.path.join(output_dir, "locales", locale, pagename + ".json")
       save_locale(localefile, value)
 
@@ -671,7 +670,7 @@ def process_preftable(path):
     handle.write(pagedata)
   # Save all the translations of strings for the page
   for locale, value in strings.iteritems():
-    if value:
+    if locale != "en" and value:
       localefile = os.path.join(output_dir, "locales", locale, pagename + ".json")
       save_locale(localefile, value)
 
