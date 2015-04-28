@@ -82,7 +82,7 @@ class AttributeParser(HTMLParser.HTMLParser):
   def handle_charref(self, name):
     self._string.append(self.unescape("&#%s;" % name))
 
-tag_whitelist = {"a", "strong", "em"}
+tag_whitelist = {"a", "strong", "em", "code"}
 attribute_parser = AttributeParser(tag_whitelist)
 
 def ensure_dir(path):
