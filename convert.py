@@ -155,7 +155,8 @@ def merge_children(nodes):
     return
 
   start = None
-  for i in range(len(en.childNodes) + 1):
+  i = 0
+  while i <= len(en.childNodes):
     if start == None:
       if i < len(en.childNodes) and is_text(en.childNodes[i]):
         start = i
@@ -180,6 +181,7 @@ def merge_children(nodes):
               parent.removeChild(parent.childNodes[start])
         i -= end - start
       start = None
+    i += 1
 
 def process_body(nodes, strings, prefix="", counter=1):
   if nodes["en"].nodeType == Node.ELEMENT_NODE:
