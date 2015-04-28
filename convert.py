@@ -286,7 +286,8 @@ def xml_to_text(xml, strings=None):
     result = re.sub(string_regexp, find_duplicates, result, flags=re.S)
 
   result = re.sub(string_regexp, unescape, result, flags=re.S)
-  result = re.sub(string_regexp, rename_links, result, flags=re.S)
+  if strings:
+    result = re.sub(string_regexp, rename_links, result, flags=re.S)
 
   result = re.sub(r"</?anwv/?>", "", result)
   result = result.replace("/_override-static/global/global", "")
