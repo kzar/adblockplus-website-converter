@@ -236,6 +236,32 @@ def xml_to_text(xml, strings=None):
   def unescape(match):
     return '{{%s %s}}' % (match.group(1), h.unescape(match.group(3)))
 
+  def rename_links(match):
+    def rename_link(match):
+      key, url = match.groups()
+      new_key = parent_key + "-link" + (str(counter.value) if counter.value > 1 else "")
+      counter.value += 1
+      for locale, value in strings.iteritems():
+        if key in value:
+          value[new_key] = value[key]
+          del value[key]
+      return 'href="{{%s %s}}"' % (new_key, url)
+
+    counter = lambda: None
+    counter.value = 1
+    parent_key = match.group(1)
+    text = re.sub(r'href="{{(\S+) (\S+)}}"', rename_link, match.group(3))
+    return '{{%s %s}}' % (parent_key, text)
+
+  string_regexp = (r"{{\s*"
+      r"([\w\-]+)" # String ID
+      r"(?:\[(.*?)\])?" # Optional comment
+      r"\s+"
+      r"((?:(?!{{).|" # Translatable text
+        r"{{(?:(?!}}).)*}}" # Nested translation
+      r")*?)"
+      r"}}")
+
   result = xml.toxml()
 
   if strings:
@@ -257,33 +283,10 @@ def xml_to_text(xml, strings=None):
         candidates[key] = text
         return match.group(0)
 
-    result = re.sub(
-      r"{{\s*"
-      r"([\w\-]+)" # String ID
-      r"(?:\[(.*?)\])?" # Optional comment
-      r"\s+"
-      r"((?:(?!{{).|" # Translatable text
-        r"{{(?:(?!}}).)*}}" # Nested translation
-      r")*?)"
-      r"}}",
-      find_duplicates,
-      result,
-      flags=re.S
-    )
+    result = re.sub(string_regexp, find_duplicates, result, flags=re.S)
 
-  result = re.sub(
-    r"{{\s*"
-    r"([\w\-]+)" # String ID
-    r"(?:\[(.*?)\])?" # Optional comment
-    r"\s+"
-    r"((?:(?!{{).|" # Translatable text
-      r"{{(?:(?!}}).)*}}" # Nested translation
-    r")*?)"
-    r"}}",
-    unescape,
-    result,
-    flags=re.S
-  )
+  result = re.sub(string_regexp, unescape, result, flags=re.S)
+  result = re.sub(string_regexp, rename_links, result, flags=re.S)
 
   result = re.sub(r"</?anwv/?>", "", result)
   result = result.replace("/_override-static/global/global", "")
