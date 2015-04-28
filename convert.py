@@ -214,12 +214,6 @@ def process_body(nodes, strings, prefix="", counter=1):
       message = re.sub(r'\s+--(?!>)', u'\u00A0\u2014', message)
       string_key = prefix + "s%i" % counter
 
-      # If there's an identical string on the page we can reuse its translations
-      if len(message) >= 8:
-        items = filter(lambda (k, v): v["message"] == message, strings["en"].iteritems())
-        if items:
-          string_key = items[0][0]
-
       for locale, value in nodes.iteritems():
         text = value.nodeValue or ""
         text = re.sub(r'\s+--(?!>)', u'\u00A0\u2014', text)
@@ -238,11 +232,45 @@ def process_body(nodes, strings, prefix="", counter=1):
 
   return counter
 
-def xml_to_text(xml):
+def xml_to_text(xml, strings=None):
   def unescape(match):
     return '{{%s %s}}' % (match.group(1), h.unescape(match.group(3)))
 
   result = xml.toxml()
+
+  if strings:
+    # Merge duplicate strings
+    candidates = {}
+    def find_duplicates(match):
+      key = match.group(1)
+      text = {"_default": match.group(3)}
+      for locale in strings.iterkeys():
+        if key in strings[locale]:
+          text[locale] = strings[locale][key]["message"]
+      existing = [k for k, v in candidates.iteritems() if v == text]
+      if existing and len(text["_default"]) >= 8:
+        for locale in text.iterkeys():
+          if locale != "_default":
+            del strings[locale][key]
+        return "{{%s %s}}" % (existing[0], text["_default"])
+      else:
+        candidates[key] = text
+        return match.group(0)
+
+    result = re.sub(
+      r"{{\s*"
+      r"([\w\-]+)" # String ID
+      r"(?:\[(.*?)\])?" # Optional comment
+      r"\s+"
+      r"((?:(?!{{).|" # Translatable text
+        r"{{(?:(?!}}).)*}}" # Nested translation
+      r")*?)"
+      r"}}",
+      find_duplicates,
+      result,
+      flags=re.S
+    )
+
   result = re.sub(
     r"{{\s*"
     r"([\w\-]+)" # String ID
@@ -348,8 +376,8 @@ def process_page(path, menu):
     bodies[locale] = get_element(value.documentElement, "body", "anwv")
   process_body(bodies, strings)
 
-  body = xml_to_text(bodies["en"])
-  head = xml_to_text(get_element(data["en"].documentElement, "head", "anwv"))
+  body = xml_to_text(bodies["en"], strings)
+  head = xml_to_text(get_element(data["en"].documentElement, "head", "anwv"), strings)
   head, body = move_meta_tags(head, body)
 
   if "<animation" in body and not "animation.js" in head:
@@ -514,7 +542,7 @@ def process_interface(path):
   for key, value in descriptions.iteritems():
     if key:
       pagedata += "{%% macro %s() %%}\n" % key
-    pagedata += raw_to_template(xml_to_text(value["en"])).lstrip()
+    pagedata += raw_to_template(xml_to_text(value["en"], strings)).lstrip()
     if key:
       pagedata += "{% endmacro %}\n"
     pagedata += "\n"
@@ -623,7 +651,7 @@ def process_preftable(path):
   for key, value in descriptions.iteritems():
     if key:
       pagedata += "{%% macro %sDescription() %%}\n" % re.sub(r'\W', '', key)
-    pagedata += raw_to_template(xml_to_text(value["en"])).lstrip()
+    pagedata += raw_to_template(xml_to_text(value["en"], strings)).lstrip()
     if key:
       pagedata += "{% endmacro %}\n"
     pagedata += "\n"
@@ -704,8 +732,8 @@ def process_subscriptionlist(path):
 %s""") % (
     strings["en"]["title"]["message"],
     license_header,
-    raw_to_template(xml_to_text(headers["en"])),
-    raw_to_template(xml_to_text(footers["en"]))
+    raw_to_template(xml_to_text(headers["en"], strings)),
+    raw_to_template(xml_to_text(footers["en"], strings))
   )
   del strings["en"]["title"]
 
