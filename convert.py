@@ -82,7 +82,7 @@ class AttributeParser(HTMLParser.HTMLParser):
   def handle_charref(self, name):
     self._string.append(self.unescape("&#%s;" % name))
 
-tag_whitelist = {"a", "strong", "em", "fix"}
+tag_whitelist = {"a", "strong", "em"}
 attribute_parser = AttributeParser(tag_whitelist)
 
 def ensure_dir(path):
@@ -104,20 +104,8 @@ def read_xml(path):
       xml
     ))
 
-def replace_fixed_strings(data):
-  def replace_fixed():
-    counter = [0]
-    def replace(match, counter=counter):
-      counter[0] += 1
-      return "{%d}" % counter[0]
-    return replace
-  for key in data.iterkeys():
-    data[key]["message"] = re.sub(r"<fix>([^<>]*)</fix>",
-                                  replace_fixed(), data[key]["message"])
-
 def save_locale(path, data):
   ensure_dir(path)
-  replace_fixed_strings(data)
   with codecs.open(path, "wb", encoding="utf-8") as handle:
     json.dump(data, handle, ensure_ascii=False, indent=2, separators=(',', ': '))
 
@@ -166,9 +154,7 @@ def merge_children(nodes):
     if (node.nodeType == Node.ELEMENT_NODE and
         node.tagName in tag_whitelist and
         all(n.nodeType == Node.TEXT_NODE for n in node.childNodes)):
-      return (node.tagName != "fix" or
-              (len(node.childNodes) or False) and
-               not all(map(is_empty, node.childNodes)))
+      return True
     return False
 
   def is_empty(node):
@@ -309,9 +295,7 @@ def xml_to_text(xml, strings=None):
 
   result = re.sub(r"</?anwv/?>", "", result)
   result = result.replace("/_override-static/global/global", "")
-
-  result = re.sub(r"<fix>(\s*)</fix>", r"\1", result, flags=re.S)
-  result = re.sub(r"<fix/>", "", result, flags=re.S)
+  result = re.sub(r"</?fix/?>", "", result, flags=re.S)
 
   # <script src=""/> => <script src=""></script>
   result = re.sub(r'<((?!link\b|meta\b|br\b|col\b|base\b|img\b|param\b|area\b|hr\b|input\b)([\w:]+)\b[^<>]*)/>', r'<\1></\2>', result, flags=re.S)
