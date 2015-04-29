@@ -307,10 +307,10 @@ def xml_to_text(xml, strings=None):
   result = re.sub(r'<((link|meta|br|col|base|img|param|area|hr|input)\b[^<>]*)>([^<>]*)</\2>', r'<\1>', result, flags=re.S)
 
   def translate_tabs(tabstop = 8):
-    offset = 0
+    offset = [0]
     def replace(match, offset=offset):
-      offset += match.start(0)
-      return " " * (tabstop - offset % tabstop)
+      offset[0] += match.start(0)
+      return " " * (tabstop - offset[0] % tabstop)
     return replace
 
   # Remove some trailing whitespace and replace tabs with spaces
