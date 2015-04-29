@@ -30,6 +30,17 @@ license_header = """{#
  # along with Adblock Plus.  If not, see <http://www.gnu.org/licenses/>.
  #}"""
 
+string_regexp = (
+  r"{{\s*"
+  r"([\w\-]+)" # String ID
+  r"(?:\[(.*?)\])?" # Optional comment
+  r"\s+"
+  r"((?:(?!{{).|" # Translatable text
+    r"{{(?:(?!}}).)*}}" # Nested translation
+  r")*?)"
+  r"}}"
+)
+
 class AttributeParser(HTMLParser.HTMLParser):
   _string = None
   _attrs = None
@@ -255,15 +266,6 @@ def xml_to_text(xml, strings=None):
     text = re.sub(r'href="{{(\S+) (\S+)}}"', rename_link, match.group(3))
     return '{{%s %s}}' % (parent_key, text)
 
-  string_regexp = (r"{{\s*"
-      r"([\w\-]+)" # String ID
-      r"(?:\[(.*?)\])?" # Optional comment
-      r"\s+"
-      r"((?:(?!{{).|" # Translatable text
-        r"{{(?:(?!}}).)*}}" # Nested translation
-      r")*?)"
-      r"}}")
-
   result = xml.toxml()
 
   if strings:
@@ -323,19 +325,7 @@ def raw_to_template(text):
     return s.replace("\\", "\\\\").replace('"', '\\"').replace("\r", "\\r").replace("\n", "\\n")
   def convert_translatable_strings(match):
     return '{{"%s"|translate("%s")}}' % (escape_string(h.unescape(match.group(3))), match.group(1))
-  text = re.sub(
-    r"{{\s*"
-    r"([\w\-]+)" # String ID
-    r"(?:\[(.*?)\])?" # Optional comment
-    r"\s+"
-    r"((?:(?!{{).|" # Translatable text
-      r"{{(?:(?!}}).)*}}" # Nested translation
-    r")*?)"
-    r"}}",
-    convert_translatable_strings,
-    text,
-    flags=re.S
-  )
+  text = re.sub(string_regexp, convert_translatable_strings, text, flags=re.S)
 
   # <anwtoc page="en/android-faq" titletag="h2"></anwtoc> => {{toc("android-faq", "h2")}}
   def convert_toc(match):
