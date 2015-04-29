@@ -236,8 +236,8 @@ def process_body(nodes, strings, prefix="", counter=1):
         counter = process_body(new_nodes, strings, prefix, counter)
     squash_attrs(nodes["en"])
   elif nodes["en"].nodeType == Node.TEXT_NODE:
-    message = nodes["en"].nodeValue.strip()
-    if message:
+    if any(n.nodeValue.strip() for n in nodes.itervalues()):
+      message = nodes["en"].nodeValue.strip()
       message = re.sub(r'\s+--(?!>)', u'\u00A0\u2014', message)
       string_key = prefix + "s%i" % counter
 
