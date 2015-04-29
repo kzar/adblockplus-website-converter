@@ -173,9 +173,9 @@ def merge_children(nodes):
         start = i
     elif i >= len(en.childNodes) or not is_text(en.childNodes[i]):
       end = i - 1
-      while start < end and is_empty(en.childNodes[start]):
+      while start < end and all(is_empty(node.childNodes[start]) for node in nodes.itervalues()):
         start += 1
-      while start < end and is_empty(en.childNodes[end]):
+      while start < end and all(is_empty(node.childNodes[end]) for node in nodes.itervalues()):
         end -= 1
       if start < end:
         for locale, parent in nodes.iteritems():
