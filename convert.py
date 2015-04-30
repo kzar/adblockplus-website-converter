@@ -199,13 +199,6 @@ def merge_children(nodes):
     i += 1
 
 def process_body(nodes, strings, prefix="", counter=1):
-  def replace_fixed():
-    counter = [0]
-    def replace(match, counter=counter):
-      counter[0] += 1
-      return "{%d}" % counter[0]
-    return replace
-
   if nodes["en"].nodeType == Node.ELEMENT_NODE:
     if nodes["en"].tagName not in ("style", "script", "fix", "pre"):
       for i in range(len(nodes["en"].childNodes)):
@@ -245,9 +238,12 @@ def process_body(nodes, strings, prefix="", counter=1):
         if string_key == prefix + "s%i" % counter and text and "[untr]" not in text:
           text = re.sub("\n\s+", " ", text, flags=re.S)
           if locale != "en":
-            text = re.sub(r"<fix>(.*?\w+?.*?)</fix>",
-                          replace_fixed(), text, flags=re.S)
-            text = re.sub(r"</?fix/?>", "", text, flags=re.S)
+            def replace_fixed(match):
+              fixed_count[0] += 1
+              return "{%d}" % fixed_count[0]
+
+            fixed_count = [0]
+            text = re.sub(r"<fix>.*?</fix>", replace_fixed, text, flags=re.S)
             text, _ = attribute_parser.parse(text, "")
             strings[locale][string_key] = {"message": text}
         value.nodeValue = "%s{{%s %s}}%s" % (pre, string_key, message, post)
