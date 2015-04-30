@@ -152,9 +152,13 @@ def merge_children(nodes):
     if node.nodeType == Node.TEXT_NODE:
       return True
     if (node.nodeType == Node.ELEMENT_NODE and
-        node.tagName in tag_whitelist and
         all(n.nodeType == Node.TEXT_NODE for n in node.childNodes)):
-      return True
+      if node.tagName in tag_whitelist:
+        return True
+      if (node.tagName == "fix" and
+          len(node.childNodes) and
+          any(re.match(r"\w+", n.nodeValue) for n in node.childNodes)):
+        return True
     return False
 
   def is_empty(node):
@@ -195,6 +199,13 @@ def merge_children(nodes):
     i += 1
 
 def process_body(nodes, strings, prefix="", counter=1):
+  def replace_fixed():
+    counter = [0]
+    def replace(match, counter=counter):
+      counter[0] += 1
+      return "{%d}" % counter[0]
+    return replace
+
   if nodes["en"].nodeType == Node.ELEMENT_NODE:
     if nodes["en"].tagName not in ("style", "script", "fix", "pre"):
       for i in range(len(nodes["en"].childNodes)):
@@ -234,6 +245,9 @@ def process_body(nodes, strings, prefix="", counter=1):
         if string_key == prefix + "s%i" % counter and text and "[untr]" not in text:
           text = re.sub("\n\s+", " ", text, flags=re.S)
           if locale != "en":
+            text = re.sub(r"<fix>(.*?\w+?.*?)</fix>",
+                          replace_fixed(), text, flags=re.S)
+            text = re.sub(r"</?fix/?>", "", text, flags=re.S)
             text, _ = attribute_parser.parse(text, "")
             strings[locale][string_key] = {"message": text}
         value.nodeValue = "%s{{%s %s}}%s" % (pre, string_key, message, post)
@@ -289,13 +303,14 @@ def xml_to_text(xml, strings=None):
 
     result = re.sub(string_regexp, find_duplicates, result, flags=re.S)
 
+  result = re.sub(r"</?fix/?>", "", result, flags=re.S)
+
   result = re.sub(string_regexp, unescape, result, flags=re.S)
   if strings:
     result = re.sub(string_regexp, rename_links, result, flags=re.S)
 
   result = re.sub(r"</?anwv/?>", "", result)
   result = result.replace("/_override-static/global/global", "")
-  result = re.sub(r"</?fix/?>", "", result, flags=re.S)
 
   # <script src=""/> => <script src=""></script>
   result = re.sub(r'<((?!link\b|meta\b|br\b|col\b|base\b|img\b|param\b|area\b|hr\b|input\b)([\w:]+)\b[^<>]*)/>', r'<\1></\2>', result, flags=re.S)
