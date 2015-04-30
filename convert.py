@@ -283,7 +283,9 @@ def xml_to_text(xml, strings=None):
     candidates = {}
     def find_duplicates(match):
       key = match.group(1)
-      text = {"_default": match.group(3)}
+      text = re.sub(r"<fix>.*?</fix>", '{1}', h.unescape(match.group(3)), flags=re.S)
+      text, _ = attribute_parser.parse(text, "")
+      text = {"_default": text}
       for locale in strings.iterkeys():
         if key in strings[locale]:
           text[locale] = strings[locale][key]["message"]
@@ -292,7 +294,7 @@ def xml_to_text(xml, strings=None):
         for locale in text.iterkeys():
           if locale != "_default":
             del strings[locale][key]
-        return "{{%s %s}}" % (existing[0], text["_default"])
+        return "{{%s %s}}" % (existing[0], match.group(3))
       else:
         candidates[key] = text
         return match.group(0)
