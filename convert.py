@@ -164,6 +164,23 @@ def merge_children(nodes):
   def is_empty(node):
     return node.nodeType == Node.TEXT_NODE and not node.nodeValue.strip()
 
+  def serializeContents(nodes):
+    result = []
+    for node in nodes:
+      if node.nodeType == Node.TEXT_NODE:
+        result.append(node.nodeValue.replace("<", "&lt;").replace(">", "&gt;"))
+      else:
+        if node.childNodes:
+          opening = node.cloneNode(False).toxml().replace("/>", ">")
+          closing = re.sub(r"\s.*>", ">", opening).replace("<", "</")
+          result.append(opening)
+          result.append(serializeContents(node.childNodes))
+          result.append(closing)
+        else:
+          result.append(node.toxml())
+
+    return "".join(result)
+
   i = 0
   en = nodes["en"]
   if all(is_empty(n) or not is_text(n) or (n.nodeType == Node.ELEMENT_NODE and n.tagName == "a") for n in en.childNodes):
@@ -184,10 +201,7 @@ def merge_children(nodes):
       if start < end:
         for locale, parent in nodes.iteritems():
           if end < len(parent.childNodes):
-            text = []
-            for child in parent.childNodes[start:end+1]:
-              text.append(child.toxml())
-            node = parent.ownerDocument.createTextNode("".join(text))
+            node = parent.ownerDocument.createTextNode(serializeContents(parent.childNodes[start:end+1]))
             parent.replaceChild(node, parent.childNodes[start])
             for child in parent.childNodes[start+1:end+1]:
               parent.removeChild(child)
