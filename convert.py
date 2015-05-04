@@ -148,17 +148,20 @@ def squash_attrs(node):
   return node
 
 def merge_children(nodes):
+  def is_fixed(node):
+    return (node.nodeType == Node.ELEMENT_NODE and
+        node.tagName == "fix" and
+        len(node.childNodes) and
+        all(n.nodeType == Node.TEXT_NODE for n in node.childNodes) and
+        any(re.match(r"\w+", n.nodeValue) for n in node.childNodes))
+
   def is_text(node):
-    if node.nodeType == Node.TEXT_NODE:
+    if node.nodeType == Node.TEXT_NODE or is_fixed(node):
       return True
     if (node.nodeType == Node.ELEMENT_NODE and
-        all(n.nodeType == Node.TEXT_NODE for n in node.childNodes)):
-      if node.tagName in tag_whitelist:
-        return True
-      if (node.tagName == "fix" and
-          len(node.childNodes) and
-          any(re.match(r"\w+", n.nodeValue) for n in node.childNodes)):
-        return True
+        node.tagName in tag_whitelist and
+        all(n.nodeType == Node.TEXT_NODE or is_fixed(n) for n in node.childNodes)):
+      return True
     return False
 
   def is_empty(node):
