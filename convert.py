@@ -285,7 +285,7 @@ def xml_to_text(xml, strings=None):
         if key in value:
           value[new_key] = value[key]
           del value[key]
-      return 'href="{{%s %s}}"' % (new_key, url)
+      return 'href="{{%s %s}}"' % (new_key, h.unescape(url))
 
     counter = lambda: None
     counter.value = 1
