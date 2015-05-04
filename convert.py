@@ -325,6 +325,7 @@ def xml_to_text(xml, strings=None):
     result = re.sub(string_regexp, rename_links, result, flags=re.S)
 
   result = re.sub(r"</?anwv/?>", "", result)
+  result = re.sub(r"</?notoc/?>", "", result)
   result = result.replace("/_override-static/global/global", "")
 
   # <script src=""/> => <script src=""></script>
