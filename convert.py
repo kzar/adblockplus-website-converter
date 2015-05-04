@@ -153,7 +153,7 @@ def merge_children(nodes):
         node.tagName == "fix" and
         len(node.childNodes) and
         all(n.nodeType == Node.TEXT_NODE for n in node.childNodes) and
-        any(re.search(r"\w+", n.nodeValue) for n in node.childNodes))
+        any(re.search(r"[\w@]+", n.nodeValue) for n in node.childNodes))
 
   def is_text(node):
     if node.nodeType == Node.TEXT_NODE or is_fixed(node):
