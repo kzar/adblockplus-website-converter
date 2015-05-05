@@ -661,6 +661,7 @@ def process_preftable(path):
       extract_string(strings[locale], "prefnamecol", value.documentElement, "prefnamecol", "anwv")
       extract_string(strings[locale], "defaultcol", value.documentElement, "defaultcol", "anwv")
       extract_string(strings[locale], "descriptioncol", value.documentElement, "descriptioncol", "anwv")
+      extract_string(strings[locale], "empty", value.documentElement, "emptydefault", "anwv")
 
     for section in get_element(value.documentElement, "sections").childNodes:
       section_id = get_text(get_element(section, "id", "anwv")).strip()
