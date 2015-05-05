@@ -246,11 +246,13 @@ def process_body(nodes, strings, prefix="", counter=1):
     if any(n.nodeValue.strip() for n in nodes.itervalues()):
       message = nodes["en"].nodeValue.strip()
       message = re.sub(r'\s+--(?!>)', u'\u00A0\u2014', message)
+      message = message.replace(u'\u00AB ', u'\u00AB\u00A0').replace(u' \u00BB', u'\u00A0\u00BB')
       string_key = prefix + "s%i" % counter
 
       for locale, value in nodes.iteritems():
         text = value.nodeValue or ""
         text = re.sub(r'\s+--(?!>)', u'\u00A0\u2014', text)
+        text = text.replace(u'\u00AB ', u'\u00AB\u00A0').replace(u' \u00BB', u'\u00A0\u00BB')
         pre, text, post = re.search(r"^(\s*)(.*?)(\s*)$", text, re.S).groups()
         if string_key == prefix + "s%i" % counter and text and "[untr]" not in text:
           text = re.sub("\n\s+", " ", text, flags=re.S)
