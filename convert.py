@@ -263,7 +263,7 @@ def process_body(nodes, strings, prefix="", counter=1):
             text = re.sub(r"<fix>.*?</fix>", replace_fixed, text, flags=re.S)
             text, _ = attribute_parser.parse(text, "")
             strings[locale][string_key] = {"message": text}
-        value.nodeValue = "%s{{%s %s}}%s" % (pre, string_key, message, post)
+        value.nodeValue = "%s{{%s %s}}%s" % (pre, string_key, message + (" " if message.endswith("}") else ""), post)
       counter += 1
   elif nodes["en"].nodeType == Node.COMMENT_NODE:
     pass
